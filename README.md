@@ -103,3 +103,12 @@ diff. Metadata is read from PNG, JPEG and WebP files._
 | `internal/server/browser_test.go`, `internal/server/testdata/harness/` | Headless browser tests (`make test-browser`) |
 | `Makefile` | Build and test targets |
 | `go.mod` | Go module definition (`dview`) |
+
+## Credits
+
+The code, tests and documentation in this project were written by
+Claude Opus 5.5 (model ID `claude-opus-5-5`), Anthropic's AI model,
+working in Claude Code (the desktop app's Code tab). The project's owner,
+Dean Troyer <dtroyer@gmail.com>, set the requirements, reviewed and
+tested each step, and decided what went in. The requirements were worked out together, a step at a time, in
+[REQUIREMENTS.md](REQUIREMENTS.md).
