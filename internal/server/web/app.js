@@ -37,6 +37,11 @@ function saveDir(i, dir) {
 const state = {
   images: [null, null], // {path, display} for image 1 (left) and image 2 (right)
   dirs: [loadDir(0), loadDir(1)],
+  last: null, // the last /api/compare response
+  // Show only changed lines: on unless turned off earlier.
+  onlyChanges: (() => {
+    try { return localStorage.getItem("dview.onlyChanges") !== "0"; } catch { return true; }
+  })(),
 };
 
 // ---- File dialog ------------------------------------------------------------
@@ -156,12 +161,50 @@ function plainText(text) {
   return el("div", { className: "text", textContent: text });
 }
 
-function diffText(segments) {
-  const div = el("div", { className: "text" });
+function segmentNode(s) {
+  return s.op === "equal" ? document.createTextNode(s.text)
+    : el("span", { className: s.op === "insert" ? "ins" : "del", textContent: s.text });
+}
+
+// splitLines turns diff segments into lines: an array of lines, each an
+// array of segments, so lines can be shown or hidden on their own.
+function splitLines(segments) {
+  const lines = [[]];
   for (const s of segments) {
-    if (s.op === "equal") div.append(s.text);
-    else div.append(el("span", { className: s.op === "insert" ? "ins" : "del", textContent: s.text }));
+    s.text.split("\n").forEach((part, n) => {
+      if (n > 0) lines.push([]);
+      if (part !== "") lines[lines.length - 1].push({ op: s.op, text: part });
+    });
   }
+  return lines;
+}
+
+// diffText shows a word diff. With onlyChanges, only the lines that contain
+// a change are shown, with a marker where unchanged lines were left out.
+function diffText(segments, onlyChanges) {
+  const div = el("div", { className: "text" });
+  if (!onlyChanges) {
+    for (const s of segments) div.append(segmentNode(s));
+    return div;
+  }
+  const lines = splitLines(segments);
+  const changed = lines.map((line) => line.some((s) => s.op !== "equal"));
+  if (!changed.includes(true)) return note("No changes.");
+  let first = true;
+  let skipped = false; // unchanged lines were left out since the last shown line
+  const addLine = (nodes) => {
+    if (!first) div.append("\n");
+    div.append(...nodes);
+    first = false;
+  };
+  const gap = () => el("span", { className: "gap", textContent: "⋯" });
+  lines.forEach((line, n) => {
+    if (!changed[n]) { skipped = true; return; }
+    if (skipped) addLine([gap()]);
+    skipped = false;
+    addLine(line.map(segmentNode));
+  });
+  if (skipped) addLine([gap()]);
   return div;
 }
 
@@ -171,7 +214,11 @@ function plainSettings(settings) {
   return pre;
 }
 
-function diffSettings(lines) {
+function diffSettings(lines, onlyChanges) {
+  if (onlyChanges) {
+    lines = lines.filter((l) => l.op !== "equal");
+    if (lines.length === 0) return note("No changes.");
+  }
   const pre = el("pre", { className: "settings" });
   const sign = { equal: " ", insert: "+", delete: "-" };
   const cls = { equal: "line", insert: "line ins", delete: "line del" };
@@ -187,7 +234,7 @@ function note(text) {
 
 // renderMeta fills one metadata panel. diff is set only for image 2 when both
 // images have metadata.
-function renderMeta(panel, side, diff) {
+function renderMeta(panel, side, diff, onlyChanges = false) {
   if (!side) { panel.replaceChildren(note("No image selected.")); return; }
   if (side.status === "missing") { panel.replaceChildren(note("This image has no generation metadata.")); return; }
   if (side.status !== "ok") {
@@ -197,9 +244,9 @@ function renderMeta(panel, side, diff) {
   const p = side.params;
   const parts = [];
   if (diff) {
-    parts.push(field("Prompt", diffText(diff.prompt)));
-    if (diff.negative.length) parts.push(field("Negative prompt", diffText(diff.negative)));
-    if (diff.settings.length) parts.push(field("Settings", diffSettings(diff.settings)));
+    parts.push(field("Prompt", diffText(diff.prompt, onlyChanges)));
+    if (diff.negative.length) parts.push(field("Negative prompt", diffText(diff.negative, onlyChanges)));
+    if (diff.settings.length) parts.push(field("Settings", diffSettings(diff.settings, onlyChanges)));
   } else {
     parts.push(field("Prompt", plainText(p.prompt)));
     if (p.negative) parts.push(field("Negative prompt", plainText(p.negative)));
@@ -229,13 +276,37 @@ function renderImage(i) {
 
 let refreshSeq = 0;
 
+const panels = [$('.meta[data-side="0"]'), $('.meta[data-side="1"]')];
+const onlyChangesBox = $("#only-changes");
+
+// renderComparison shows the last comparison, honoring the checkbox. The
+// checkbox only applies when there is a diff to filter.
+function renderComparison() {
+  const resp = state.last;
+  onlyChangesBox.checked = state.onlyChanges;
+  onlyChangesBox.disabled = !(resp && resp.diff);
+  if (!resp) {
+    panels.forEach((p) => renderMeta(p, null));
+    return;
+  }
+  renderMeta(panels[0], resp.a, null);
+  renderMeta(panels[1], resp.b, resp.diff, state.onlyChanges);
+}
+
+onlyChangesBox.addEventListener("change", () => {
+  state.onlyChanges = onlyChangesBox.checked;
+  try { localStorage.setItem("dview.onlyChanges", state.onlyChanges ? "1" : "0"); } catch { /* not available */ }
+  log("debug", "only changed lines", { on: state.onlyChanges });
+  renderComparison();
+});
+
 async function refresh() {
   renderImage(0);
   renderImage(1);
-  const panels = [$('.meta[data-side="0"]'), $('.meta[data-side="1"]')];
   const [a, b] = state.images;
   if (!a && !b) {
-    panels.forEach((p) => renderMeta(p, null));
+    state.last = null;
+    renderComparison();
     return;
   }
   const seq = ++refreshSeq;
@@ -246,11 +317,13 @@ async function refresh() {
   try {
     const resp = await getJSON(`/api/compare?${params}`);
     if (seq !== refreshSeq) return; // a newer request superseded this one
-    renderMeta(panels[0], resp.a, null);
-    renderMeta(panels[1], resp.b, resp.diff);
+    state.last = resp;
+    renderComparison();
   } catch (err) {
     if (seq !== refreshSeq) return;
     log("error", "compare failed", { error: err.message });
+    state.last = null;
+    onlyChangesBox.disabled = true;
     panels.forEach((p) => p.replaceChildren(note(`Couldn't load metadata: ${err.message}`)));
   }
 }

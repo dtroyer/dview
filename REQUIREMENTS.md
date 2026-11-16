@@ -170,6 +170,14 @@ compared against it.
 4. If only one image is shown, its metadata is shown as-is, with no diff.
 5. If either image's metadata is missing or unreadable, the other image's
    metadata is shown as-is, with no diff.
+6. A "Show only changed lines" checkbox under image 2's metadata panel
+   filters image 2's diff:
+   - Settings: lines with the same value in both images are hidden.
+   - Prompt and negative prompt: only lines that contain a change are
+     shown, with `⋯` where unchanged lines were left out.
+   - A section with no changes says "No changes."
+   - The checkbox is checked by default. It is disabled when there is no
+     diff to filter. Its setting is remembered across page reloads.
 
 ## User interface
 
@@ -186,9 +194,10 @@ compared against it.
      under the button.
    - The two images side by side.
    - Below each image, that image's metadata (see Metadata comparison).
+   - Under image 2's metadata, the "Show only changed lines" checkbox.
 4. The page fits the window without scrolling:
    - The images are scaled to fit the window, keeping their aspect ratio,
-     with at least 5em of space around each image.
+     with at least 2em of space around each image.
    - Each image's metadata is in its own panel, which scrolls when the text
      doesn't fit.
 5. On narrow screens (phones), the space around the images is reduced so

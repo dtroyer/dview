@@ -13,7 +13,7 @@
   --del-fg: #f87171;
   --del-bg: rgba(239, 68, 68, 0.16);
   --radius: 8px;
-  --space: 5em; /* minimum space around the images */
+  --space: 2em; /* minimum space around the images */
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "DejaVu Sans Mono", Menlo, monospace;
   color-scheme: dark;
 }
@@ -34,10 +34,27 @@ body {
   height: 100vh;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) minmax(8em, 32vh);
+  grid-template-rows: auto auto minmax(0, 1fr) minmax(8em, 32vh) auto;
   column-gap: var(--space);
-  padding: 0 var(--space) 1rem;
+  padding: 0 var(--space) 0.75rem;
 }
+
+/* Options under a metadata panel. */
+.options {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.options label { display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer; }
+.options input { accent-color: var(--accent); width: 1rem; height: 1rem; margin: 0; cursor: pointer; }
+.options:has(input:disabled) { color: var(--muted); }
+.options:has(input:disabled) label, .options input:disabled { cursor: default; }
+
+/* A gap between changed lines shown on their own. */
+.gap { color: var(--muted); user-select: none; }
 
 .topbar {
   grid-column: 1 / -1;
@@ -230,5 +247,5 @@ body {
 /* On narrow screens, use less space around the images. */
 @media (max-width: 700px) {
   :root { --space: 1rem; }
-  .app { grid-template-rows: auto auto minmax(0, 1fr) minmax(8em, 40vh); }
+  .app { grid-template-rows: auto auto minmax(0, 1fr) minmax(8em, 40vh) auto; }
 }
