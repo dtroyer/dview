@@ -296,16 +296,68 @@ txt2img tab, to be worked on further in another browser window.
    (`log/slog`), as text, to standard error.
 2. By default it logs only the addresses it listens on and the directories
    it serves, plus errors.
-3. The `-x` option (long form `--debug`) also logs major internal actions:
-   - the parsed options, resolved listen addresses and top-level
-     directories,
+3. The `--debug` option also logs major internal actions:
+   - the settings and the config file they came from, the parsed options,
+     resolved listen addresses and top-level directories,
    - every HTTP request, with its status, size and duration,
    - directory listings, skipped symbolic links, image requests, metadata
      reads and comparisons, and refused paths,
    - messages and errors from the web page: page load, Open button clicks,
      the file dialog opening, listing and closing, and any JavaScript error
-     or failed resource. The page sends these to the server only when `-x`
-     is on.
+     or failed resource. The page sends these to the server only when
+     `--debug` is on.
+4. `--debug` replaced the earlier `-x`, which is no longer accepted.
+
+## Configuration
+
+1. The settings `listen`, `url`, `dir` and `debug` correspond to the
+   options `--listen`, `--url`, `--dir` and `--debug`. Each can come from:
+   - the command line (highest priority),
+   - an environment variable, `DVIEW_` plus the option name in uppercase:
+     `DVIEW_LISTEN`, `DVIEW_URL`, `DVIEW_DIR`, `DVIEW_DEBUG`,
+   - the config file (lowest priority),
+   - otherwise, the built-in default.
+2. A setting from a higher-priority source replaces the lower one entirely.
+   For `dir`, any `--dir` on the command line replaces the directories from
+   the environment and the config file; they are not combined.
+3. The config file is YAML, read once at startup. Only one file is read:
+   - `--config <file>` names it. Otherwise the `DVIEW_CONFIG` environment
+     variable does. A relative name is relative to the directory dview is
+     started in. A named file must exist, or dview exits with an error.
+   - When no file is named, dview reads the first of these that exists:
+     1. `./.dview.yaml`, then `./.dview.yml`, in the directory dview is
+        started in,
+     2. `$XDG_CONFIG_HOME/dview.yaml`, then `dview.yml`, when
+        `XDG_CONFIG_HOME` is set,
+     3. `$HOME/.config/dview.yaml`, then `$HOME/.config/dview.yml`.
+   - When none of them exists, the defaults are used; that is not an error.
+   - Unknown settings, and invalid YAML, are errors that stop dview, so
+     typos aren't silently ignored.
+   - `dir` is a list of `[<name>=]<path>` values, or a single one.
+4. Environment variables:
+   - `DVIEW_DIR` holds one or more `--dir` values separated by `:`, like
+     `PATH`.
+   - `DVIEW_DEBUG` is `true` or `false` (or `1`/`0`); anything else is an
+     error.
+   - An empty variable counts as not set.
+5. In the config file and environment variables, a path starting with `~`
+   means the home directory, as the shell does on the command line.
+   Relative paths are relative to the directory dview is started in.
+6. `--show-config` prints the settings dview would use, combined from all
+   sources and including defaults, as the contents of a `dview.yaml`, to
+   standard output, then exits without starting the server and with no
+   other output. Its output can be saved as the config file.
+7. `--show-config` is only a command-line option. It can't be set in the
+   config file (it's reported as an unknown setting), and
+   `DVIEW_SHOW_CONFIG` is ignored.
+8. `--config` and `DVIEW_CONFIG` choose the file; they are not settings.
+   They don't appear in `--show-config`'s output, and `config` in the
+   config file is reported as an unknown setting.
+9. The config file's settings are top-level keys: no `dview:` key around
+   them and no `version` key. Backward compatibility is required: any
+   config file that works with one release must keep working, with the
+   same meaning, in later releases. New settings may be added; existing
+   ones are not renamed, removed or changed in meaning.
 
 ## Platform
 

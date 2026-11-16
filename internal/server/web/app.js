@@ -2,7 +2,7 @@
 
 const TOP = "/"; // the top of the file tree (the virtual root)
 
-// log sends a message to the server's log when dview runs with -x.
+// log sends a message to the server's log when dview runs with --debug.
 const log = (level, msg, data) => window.dviewLog?.(level, msg, data);
 
 const $ = (sel, root = document) => root.querySelector(sel);

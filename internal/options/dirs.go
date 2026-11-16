@@ -95,6 +95,7 @@ func ParseDirs(cwd string, specs []string) (Roots, error) {
 		if path == "" {
 			return Roots{}, fmt.Errorf("invalid --dir %q: path is empty; expected %s", spec, DirFormat)
 		}
+		path = expandHome(path)
 		if err := add(fmt.Sprintf("--dir %q", spec), name, path, explicit); err != nil {
 			return Roots{}, err
 		}

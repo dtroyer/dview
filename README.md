@@ -50,21 +50,67 @@ macOS location, set `DVIEW_FIREFOX_PATH`, `DVIEW_CHROME_PATH` or
 `DVIEW_SAFARIDRIVER_PATH` to it.
 
 ```bash
-./bin/dview [-x] [--listen [<address>:]<port>] [--url <URL>] [--dir [<name>=]<path>]...
+./bin/dview [--config <file>] [--debug] [--listen [<address>:]<port>] [--url <URL>] [--dir [<name>=]<path>]... [--show-config]
 ```
 
 | Option | Default | Meaning |
 | ------ | ------- | ------- |
-| `-x`, `--debug` | off | Log major internal actions to the console: option parsing, every request, directory listings, metadata reads, and messages and errors sent back from the browser page. |
+| `--debug` | off | Log major internal actions to the console: option parsing, every request, directory listings, metadata reads, and messages and errors sent back from the browser page. |
 | `--listen [<address>:]<port>` | `localhost:8008` | Address and port to listen on. The address may be an IPv4 address, a bracketed IPv6 address such as `[::]`, or a hostname. A port alone keeps `localhost`. |
 | `--url <URL>` | last used | Address of a Forge-like back end, for the **Send** buttons, for example `http://127.0.0.1:7860/`. It can also be edited at the top of the page, which remembers the last 4. |
 | `--dir [<name>=]<path>` | none | Also allow files under `<path>`, shown as `/<name>`. Can be repeated. The working directory is always allowed. An unnamed `--dir /` allows the whole filesystem. |
+| `--config <file>` | searched for | Read settings from this config file. See below. |
+| `--show-config` | | Print the settings dview would use, as the contents of `dview.yaml`, and exit without starting. |
 
 Examples:
 
 ```bash
 ./bin/dview --listen 9000
 ./bin/dview --listen '[::]:8008' --dir /data/outputs --dir old=/archive/outputs
+```
+
+### Config file and environment variables
+
+The `--listen`, `--url`, `--dir` and `--debug` options can also be set in a
+config file or an environment variable. When the same setting comes from
+more than one place, the command line wins, then environment variables, then
+the config file.
+
+`--config <file>` (or the `DVIEW_CONFIG` environment variable) names the
+config file to read; `--config` wins if both are given, and the file must
+exist. Otherwise dview reads the first of these it finds, and none at all is
+fine:
+
+1. `.dview.yaml` or `.dview.yml` in the directory dview is started in
+2. `dview.yaml` or `dview.yml` in `$XDG_CONFIG_HOME`, if that is set
+3. `dview.yaml` or `dview.yml` in `~/.config`
+
+Only that one file is read. Unknown settings in it are reported as errors,
+to catch typos:
+
+```yaml
+listen: '[::]:8008'
+url: http://127.0.0.1:7860/
+dir:
+  - ~/forge/outputs
+  - old=/archive/outputs
+debug: false
+```
+
+`dir` can also be a single path. `~` at the start of a path means your home
+directory, in the config file and environment variables too. Relative paths
+are relative to the directory dview is started in.
+
+The environment variables are `DVIEW_LISTEN`, `DVIEW_URL`, `DVIEW_DIR` and
+`DVIEW_DEBUG` (`true` or `false`). `DVIEW_DIR` takes several directories
+separated by `:`, like `PATH`. An empty variable counts as not set.
+
+`--show-config` prints the combined result as YAML. It's a quick way to see
+what dview will use, or to start a config file. Which file the settings came
+from isn't a setting, so `--config` and `DVIEW_CONFIG` don't appear in it:
+
+```bash
+./bin/dview --show-config > ~/.config/dview.yaml
 ```
 
 dview runs until you press Ctrl-C (or it gets SIGTERM).

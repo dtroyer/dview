@@ -1,5 +1,5 @@
 // Sends the page's log messages and errors to the dview server's log when
-// dview runs with -x. This is a classic script that loads before app.js, so
+// dview runs with --debug. This is a classic script that loads before app.js, so
 // it also catches errors that stop app.js from loading at all.
 (function () {
   "use strict";
