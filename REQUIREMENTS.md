@@ -306,3 +306,19 @@ txt2img tab, to be worked on further in another browser window.
 2. Build and test with GNU Make (`make build`, `make test`).
 3. Command-line options are handled with `github.com/urfave/cli/v3`.
 4. Tests use `github.com/stretchr/testify`.
+5. `make test-browser` runs the web UI in a real browser:
+   - `BROWSER` selects the browser: `firefox` (default), `chrome` (Chrome
+     or Chromium), `safari` (macOS only), or a comma-separated list.
+   - Firefox and Chrome run headless. Safari can't, so it runs through
+     Apple's `safaridriver` (WebDriver) in a separate automation window
+     with its own isolated storage. It needs remote automation allowed once
+     (`safaridriver --enable`), which the test's error message explains.
+   - The tests drive the UI the way a user would: the file dialog, choosing
+     images, the diff, the changed-lines checkbox, the URL box and the Send
+     buttons' enabled state. They also fail on any JavaScript error.
+   - They need no tools beyond Go and the installed browser (and, for
+     Safari, the `safaridriver` that ships with macOS). Each run uses a
+     fresh, temporary browser profile.
+   - What they can't cover: Send's clipboard copy and opening the Forge tab
+     need a real user's click, which a script can't fake.
+   - Plain `make test` doesn't run them.

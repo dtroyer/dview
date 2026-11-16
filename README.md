@@ -25,6 +25,30 @@ make test       # run all tests
 make clean      # remove build output
 ```
 
+`make test-browser` runs the web UI in a real browser and checks the file
+dialog, the diff, the checkbox, the URL box and the Send buttons. `BROWSER`
+picks the browser: `firefox` (the default), `chrome`, `safari`, or a
+comma-separated list:
+
+```bash
+make test-browser BROWSER=firefox,chrome,safari
+```
+
+Firefox and Chrome run headless. Safari has no headless mode, so it runs
+through Apple's `safaridriver` in a separate automation window that shows on
+screen while the test runs. Safari must be allowed to be automated, once:
+
+```bash
+safaridriver --enable
+```
+
+That asks for an administrator password. Turning on **Develop > Allow Remote
+Automation** in Safari does the same.
+
+The browser must be installed. If it isn't found on `PATH` or in the usual
+macOS location, set `DVIEW_FIREFOX_PATH`, `DVIEW_CHROME_PATH` or
+`DVIEW_SAFARIDRIVER_PATH` to it.
+
 ```bash
 ./bin/dview [-x] [--listen [<address>:]<port>] [--url <URL>] [--dir [<name>=]<path>]...
 ```
@@ -71,5 +95,6 @@ diff. Metadata is read from PNG, JPEG and WebP files._
 | `internal/meta/` | Reading and parsing A1111/Forge metadata |
 | `internal/diff/` | Word diff for prompts, key-by-key diff for settings |
 | `*_test.go` | Tests (stretchr/testify) |
+| `internal/server/browser_test.go`, `internal/server/testdata/harness/` | Headless browser tests (`make test-browser`) |
 | `Makefile` | Build and test targets |
 | `go.mod` | Go module definition (`dview`) |
