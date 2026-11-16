@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"time"
 
+	"dview/internal/fsview"
 	"dview/internal/options"
 )
 
@@ -120,8 +121,12 @@ func Handler(cfg Config) http.Handler {
 	if err != nil {
 		panic(err) // the embedded directory is fixed at build time
 	}
+	a := &api{fs: fsview.New(cfg.Roots)}
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServerFS(static))
+	mux.HandleFunc("GET /api/list", a.list)
+	mux.HandleFunc("GET /api/image", a.image)
+	mux.HandleFunc("GET /api/compare", a.compare)
 	return mux
 }
 

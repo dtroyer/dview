@@ -21,8 +21,13 @@ The project overview is in [README.md](README.md).
    files on the browser's machine and never tells the page their paths.
 3. The file dialog:
    - Is styled to match the rest of the UI.
-   - Starts in the directory dview was started from (its working directory).
-   - Shows paths relative to that directory.
+   - Is opened by an Open button above each image (see User interface).
+   - The first time each button is used, starts at the top of the tree: the
+     virtual root, or the working directory when there is no virtual root.
+   - Each Open button remembers the directory its dialog was last in,
+     independently of the other button, including after the dialog is
+     cancelled and after the page is reloaded.
+   - With no virtual root, shows paths relative to the working directory.
    - Lets you move into subdirectories and back up to parent directories,
      but not above a top-level directory (see below).
    - Allows more than one file to be selected.
@@ -40,12 +45,18 @@ The project overview is in [README.md](README.md).
      uppercase before lowercase). Natural, macOS Finder-style sorting may be
      added later.
    - Doesn't list hidden entries (names starting with `.`), other than `..`.
-4. If more than two files are selected, only the first two are used, in the
-   order the dialog lists them.
-5. If only one file is selected, dview opens the file dialog again so the
-   second image can be picked. The second file can come from a different
-   directory than the first. If the second dialog is cancelled, dview shows
-   just the first image.
+4. Both Open buttons behave the same, except for where the chosen files go:
+   - The first selected file becomes the image under the button that was
+     pressed.
+   - A second selected file, if any, becomes the other image.
+   - If more than two files are selected, only the first two are used, in
+     the order the dialog lists them.
+   - If only one file is selected, only the pressed button's image changes.
+     (This replaces the earlier rule of opening the dialog a second time:
+     the other button picks the other image, from any directory.)
+5. In the dialog, clicking a directory opens it; clicking a file selects or
+   deselects it. Double-clicking a file opens just that file. Enter opens the
+   selection and Escape cancels.
 6. Access is limited to a set of top-level directories:
    - The directory dview was started from (its working directory) is always
      one of them.
@@ -168,9 +179,20 @@ compared against it.
    interface (a Gradio-style layout): a dark theme by default, an orange
    accent color for primary actions and highlights, content grouped in
    rounded panels, and compact labeled fields.
-3. The page layout:
-   - The two images side by side, each in its own panel.
+3. The page layout, from top to bottom:
+   - A header with space for a logo in the top-left corner. Until there is a
+     logo, it shows "dView" in an Optima-like typeface.
+   - An Open button above each image, with the selected file's path shown
+     under the button.
+   - The two images side by side.
    - Below each image, that image's metadata (see Metadata comparison).
+4. The page fits the window without scrolling:
+   - The images are scaled to fit the window, keeping their aspect ratio,
+     with at least 5em of space around each image.
+   - Each image's metadata is in its own panel, which scrolls when the text
+     doesn't fit.
+5. On narrow screens (phones), the space around the images is reduced so
+   they stay usable.
 
 ## Web server
 

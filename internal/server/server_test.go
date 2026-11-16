@@ -69,7 +69,7 @@ func TestRunServesUntilCancelled(t *testing.T) {
 	for _, l := range listeners {
 		code, body := get(t, "http://"+l.Addr().String()+"/")
 		assert.Equal(t, http.StatusOK, code)
-		assert.Contains(t, body, "<title>dview</title>")
+		assert.Contains(t, body, "<title>dView</title>")
 	}
 
 	cancel()

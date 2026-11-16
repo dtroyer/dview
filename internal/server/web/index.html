@@ -3,19 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dview</title>
-<style>
-  body { margin: 0; padding: 2rem; background: #0b0f19; color: #e5e7eb;
-         font-family: system-ui, sans-serif; }
-  .panel { max-width: 40rem; padding: 1rem 1.25rem; border-radius: 8px;
-           background: #1f2937; border: 1px solid #374151; }
-  h1 { margin-top: 0; color: #f97316; font-size: 1.25rem; }
-</style>
+<title>dView</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
 </head>
 <body>
-<div class="panel">
-  <h1>dview</h1>
-  <p>The server is running. The image comparison UI isn't implemented yet.</p>
+<div class="app">
+  <header class="topbar">
+    <div class="logo" aria-label="dView">dView</div>
+  </header>
+
+  <div class="cell controls" data-side="0">
+    <button type="button" class="btn primary open" data-side="0">Open</button>
+    <div class="filename" data-side="0">No image</div>
+  </div>
+  <div class="cell controls" data-side="1">
+    <button type="button" class="btn primary open" data-side="1">Open</button>
+    <div class="filename" data-side="1">No image</div>
+  </div>
+
+  <div class="cell frame" data-side="0"><div class="placeholder">Image 1</div></div>
+  <div class="cell frame" data-side="1"><div class="placeholder">Image 2</div></div>
+
+  <section class="cell panel meta" data-side="0" aria-label="Image 1 metadata"></section>
+  <section class="cell panel meta" data-side="1" aria-label="Image 2 metadata"></section>
 </div>
+
+<dialog id="picker" class="panel picker" aria-labelledby="picker-title">
+  <form method="dialog" class="picker-form">
+    <div class="picker-head">
+      <span id="picker-title" class="label">Open image</span>
+      <span class="picker-path"></span>
+    </div>
+    <ul class="picker-list" role="listbox" aria-multiselectable="true" tabindex="0"></ul>
+    <div class="picker-foot">
+      <span class="picker-count"></span>
+      <button type="button" class="btn secondary" value="cancel" data-action="cancel">Cancel</button>
+      <button type="button" class="btn primary" data-action="open" disabled>Open</button>
+    </div>
+  </form>
+</dialog>
 </body>
 </html>
