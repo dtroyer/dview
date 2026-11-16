@@ -216,6 +216,8 @@ compared against it.
 
 1. Written in Go 1.27 or later.
 2. Build and test with GNU Make (`make build`, `make test`).
+3. Command-line options are handled with `github.com/urfave/cli/v3`.
+4. Tests use `github.com/stretchr/testify`.
 
 ## To verify
 
