@@ -13,6 +13,7 @@ package fsview
 import (
 	"errors"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -43,10 +44,15 @@ const (
 type FS struct {
 	roots options.Roots
 	mode  mode
+	log   *slog.Logger
 }
 
-// New builds the tree for the given top-level directories.
-func New(roots options.Roots) *FS {
+// New builds the tree for the given top-level directories. log receives
+// debug messages about skipped entries; nil discards them.
+func New(roots options.Roots, log *slog.Logger) *FS {
+	if log == nil {
+		log = slog.New(slog.DiscardHandler)
+	}
 	m := single
 	switch {
 	case roots.WholeFS:
@@ -54,7 +60,7 @@ func New(roots options.Roots) *FS {
 	case roots.Virtual():
 		m = virtual
 	}
-	return &FS{roots: roots, mode: m}
+	return &FS{roots: roots, mode: m, log: log}
 }
 
 // Entry is one item in a directory listing.
@@ -232,6 +238,7 @@ func (f *FS) List(p string) (Listing, error) {
 		if item.Type()&fs.ModeSymlink != 0 {
 			_, target, err := f.resolve(filepath.Join(dir, name))
 			if err != nil {
+				f.log.Debug("skipping symbolic link", "dir", dir, "name", name, "reason", err)
 				continue
 			}
 			isDir, isFile = target.IsDir(), target.Mode().IsRegular()

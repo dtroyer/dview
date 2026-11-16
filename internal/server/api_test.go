@@ -7,7 +7,7 @@ import (
 	"hash/crc32"
 	"image"
 	"image/png"
-	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -55,7 +55,6 @@ func newTestServer(t *testing.T) *httptest.Server {
 
 	srv := httptest.NewServer(Handler(Config{
 		Roots: options.Roots{List: []options.Root{{Name: "out", Path: filepath.Join(root, "out")}}},
-		Log:   io.Discard,
 	}))
 	t.Cleanup(srv.Close)
 	return srv
@@ -155,4 +154,38 @@ func showSegs(segs []diff.Segment) string {
 		}
 	}
 	return sb.String()
+}
+
+func TestAPIConfigAndClientLog(t *testing.T) {
+	// Without debug logging, the page is told not to send messages, and
+	// messages are refused.
+	plain := httptest.NewServer(Handler(Config{}))
+	defer plain.Close()
+	var cfg map[string]bool
+	require.Equal(t, http.StatusOK, getJSON(t, plain, "/api/config", &cfg))
+	assert.False(t, cfg["debug"])
+	resp, err := http.Post(plain.URL+"/api/log", "application/json", strings.NewReader(`{"msg":"x"}`))
+	require.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+	// With debug logging, browser messages go to the log.
+	var log bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	dbg := httptest.NewServer(Handler(Config{Log: logger, Debug: true}))
+	defer dbg.Close()
+	require.Equal(t, http.StatusOK, getJSON(t, dbg, "/api/config", &cfg))
+	assert.True(t, cfg["debug"])
+
+	resp, err = http.Post(dbg.URL+"/api/log", "application/json",
+		strings.NewReader(`{"level":"error","msg":"boom","data":{"line":12}}`))
+	require.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+	assert.Contains(t, log.String(), `level=ERROR msg=boom source=browser line=12`)
+
+	resp, err = http.Post(dbg.URL+"/api/log", "application/json", strings.NewReader(`not json`))
+	require.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }

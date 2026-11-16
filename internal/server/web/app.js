@@ -2,6 +2,9 @@
 
 const TOP = "/"; // the top of the file tree (the virtual root)
 
+// log sends a message to the server's log when dview runs with -x.
+const log = (level, msg, data) => window.dviewLog?.(level, msg, data);
+
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -74,9 +77,11 @@ const picker = (() => {
   }
 
   async function go(dir) {
+    log("debug", "dialog: listing directory", { dir });
     try {
       listing = await getJSON(`/api/list?path=${q(dir)}`);
     } catch (err) {
+      log("warn", "dialog: listing failed", { dir, error: err.message });
       if (dir !== TOP) return go(TOP); // the remembered directory is gone
       listing = null;
       pathEl.textContent = "";
@@ -96,6 +101,7 @@ const picker = (() => {
   }
 
   function finish(chosen) {
+    log("debug", "dialog: closed", { dir: listing ? listing.path : TOP, files: chosen.map((f) => f.path) });
     const done = resolve;
     resolve = null;
     if (dialog.open) dialog.close();
@@ -127,6 +133,7 @@ const picker = (() => {
     // open shows the dialog at dir and resolves to {files, dir}, where dir is
     // the directory the dialog was in when it closed.
     open(dir) {
+      log("debug", "dialog: opening", { dir });
       return new Promise((res) => {
         resolve = res;
         list.replaceChildren();
@@ -235,6 +242,7 @@ async function refresh() {
   const params = new URLSearchParams();
   if (a) params.set("a", a.path);
   if (b) params.set("b", b.path);
+  log("debug", "comparing", { a: a ? a.path : "", b: b ? b.path : "" });
   try {
     const resp = await getJSON(`/api/compare?${params}`);
     if (seq !== refreshSeq) return; // a newer request superseded this one
@@ -242,6 +250,7 @@ async function refresh() {
     renderMeta(panels[1], resp.b, resp.diff);
   } catch (err) {
     if (seq !== refreshSeq) return;
+    log("error", "compare failed", { error: err.message });
     panels.forEach((p) => p.replaceChildren(note(`Couldn't load metadata: ${err.message}`)));
   }
 }
@@ -251,6 +260,7 @@ async function refresh() {
 for (const btn of $$("button.open")) {
   const i = Number(btn.dataset.side);
   btn.addEventListener("click", async () => {
+    log("debug", "open button clicked", { side: i, dir: state.dirs[i] });
     const { files, dir } = await picker.open(state.dirs[i]);
     state.dirs[i] = dir;
     saveDir(i, dir);
@@ -263,3 +273,4 @@ for (const btn of $$("button.open")) {
 }
 
 refresh();
+log("debug", "app ready", { openButtons: $$("button.open").length });

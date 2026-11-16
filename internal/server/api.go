@@ -3,6 +3,8 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -14,7 +16,53 @@ import (
 
 // api serves the JSON and image endpoints used by the web UI.
 type api struct {
-	fs *fsview.FS
+	fs    *fsview.FS
+	log   *slog.Logger
+	debug bool
+}
+
+// maxClientLog bounds the size of a message the browser can send to the log.
+const maxClientLog = 16 << 10
+
+// config handles GET /api/config, which tells the page whether to send its
+// own log messages to the server.
+func (a *api) config(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]bool{"debug": a.debug})
+}
+
+// clientLog handles POST /api/log: a log message from the browser. It is
+// only available with debug logging on.
+func (a *api) clientLog(w http.ResponseWriter, r *http.Request) {
+	if !a.debug {
+		http.NotFound(w, r)
+		return
+	}
+	var m struct {
+		Level string         `json:"level"`
+		Msg   string         `json:"msg"`
+		Data  map[string]any `json:"data"`
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxClientLog))
+	if err == nil {
+		err = json.Unmarshal(body, &m)
+	}
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid log message"})
+		return
+	}
+	level := slog.LevelDebug
+	switch m.Level {
+	case "error":
+		level = slog.LevelError
+	case "warn":
+		level = slog.LevelWarn
+	}
+	args := []any{"source", "browser"}
+	for k, v := range m.Data {
+		args = append(args, k, v)
+	}
+	a.log.Log(r.Context(), level, m.Msg, args...)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -39,21 +87,27 @@ func writeError(w http.ResponseWriter, err error) {
 
 // list handles GET /api/list?path=<dir>.
 func (a *api) list(w http.ResponseWriter, r *http.Request) {
-	l, err := a.fs.List(r.URL.Query().Get("path"))
+	p := r.URL.Query().Get("path")
+	l, err := a.fs.List(p)
 	if err != nil {
+		a.log.Debug("list failed", "path", p, "err", err)
 		writeError(w, err)
 		return
 	}
+	a.log.Debug("listed directory", "path", l.Path, "entries", len(l.Entries))
 	writeJSON(w, http.StatusOK, l)
 }
 
 // image handles GET /api/image?path=<file>.
 func (a *api) image(w http.ResponseWriter, r *http.Request) {
-	real, err := a.fs.OpenImage(r.URL.Query().Get("path"))
+	p := r.URL.Query().Get("path")
+	real, err := a.fs.OpenImage(p)
 	if err != nil {
+		a.log.Debug("image refused", "path", p, "err", err)
 		writeError(w, err)
 		return
 	}
+	a.log.Debug("serving image", "path", p, "file", real)
 	f, err := os.Open(real)
 	if err != nil {
 		writeError(w, fsview.ErrNotFound)
@@ -114,6 +168,15 @@ func (a *api) loadSide(p string) (*side, error) {
 		params := meta.Parse(text)
 		s.Params = &params
 	}
+	attrs := []any{"path", p, "file", real, "status", s.Status}
+	if s.Params != nil {
+		attrs = append(attrs, "prompt_chars", len(s.Params.Prompt),
+			"negative_chars", len(s.Params.Negative), "settings", len(s.Params.Settings))
+	}
+	if s.Error != "" {
+		attrs = append(attrs, "err", s.Error)
+	}
+	a.log.Debug("read metadata", attrs...)
 	return s, nil
 }
 
@@ -129,6 +192,7 @@ func (a *api) compare(w http.ResponseWriter, r *http.Request) {
 		if p := q.Get(x.key); p != "" {
 			s, err := a.loadSide(p)
 			if err != nil {
+				a.log.Debug("compare refused", "side", x.key, "path", p, "err", err)
 				writeError(w, err)
 				return
 			}
@@ -142,6 +206,8 @@ func (a *api) compare(w http.ResponseWriter, r *http.Request) {
 			Negative: diff.Words(pa.Negative, pb.Negative),
 			Settings: diff.Settings(pa.Settings, pb.Settings),
 		}
+		a.log.Debug("compared metadata", "a", resp.A.Path, "b", resp.B.Path,
+			"prompt_segments", len(resp.Diff.Prompt), "settings_lines", len(resp.Diff.Settings))
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

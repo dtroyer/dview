@@ -26,11 +26,12 @@ make clean      # remove build output
 ```
 
 ```bash
-./bin/dview [--listen [<address>:]<port>] [--dir [<name>=]<path>]...
+./bin/dview [-x] [--listen [<address>:]<port>] [--dir [<name>=]<path>]...
 ```
 
 | Option | Default | Meaning |
 | ------ | ------- | ------- |
+| `-x`, `--debug` | off | Log major internal actions to the console: option parsing, every request, directory listings, metadata reads, and messages and errors sent back from the browser page. |
 | `--listen [<address>:]<port>` | `localhost:8008` | Address and port to listen on. The address may be an IPv4 address, a bracketed IPv6 address such as `[::]`, or a hostname. A port alone keeps `localhost`. |
 | `--dir [<name>=]<path>` | none | Also allow files under `<path>`, shown as `/<name>`. Can be repeated. The working directory is always allowed. An unnamed `--dir /` allows the whole filesystem. |
 

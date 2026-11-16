@@ -45,7 +45,7 @@ func TestListSingleRoot(t *testing.T) {
 	root := tree(t, "work/b.png", "work/A.PNG", "work/img10.jpg", "work/img2.webp", "work/notes.txt",
 		"work/.hidden.png", "work/.git/", "work/sub/", "work/Zdir/", "work/x.jpeg")
 	cwd := filepath.Join(root, "work")
-	f := New(options.Roots{List: []options.Root{{Name: "work", Path: cwd}}})
+	f := New(options.Roots{List: []options.Root{{Name: "work", Path: cwd}}}, nil)
 
 	l, err := f.List("/")
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestListVirtualRoot(t *testing.T) {
 	f := New(options.Roots{List: []options.Root{
 		{Name: "outputs", Path: filepath.Join(root, "data/outputs")},
 		{Name: "work", Path: filepath.Join(root, "work")},
-	}})
+	}}, nil)
 
 	l, err := f.List("")
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestListVirtualRoot(t *testing.T) {
 
 func TestListWholeFS(t *testing.T) {
 	root := tree(t, "a/b.png")
-	f := New(options.Roots{WholeFS: true, List: []options.Root{{Path: "/"}}})
+	f := New(options.Roots{WholeFS: true, List: []options.Root{{Path: "/"}}}, nil)
 
 	l, err := f.List(filepath.ToSlash(filepath.Join(root, "a")))
 	require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestSymlinks(t *testing.T) {
 	f := New(options.Roots{List: []options.Root{
 		{Name: "other", Path: other},
 		{Name: "work", Path: work},
-	}})
+	}}, nil)
 
 	l, err := f.List("/work")
 	require.NoError(t, err)
@@ -156,7 +156,7 @@ func TestSymlinks(t *testing.T) {
 func TestOpenImage(t *testing.T) {
 	root := tree(t, "work/a.png", "work/notes.txt", "work/d.png/")
 	work := filepath.Join(root, "work")
-	f := New(options.Roots{List: []options.Root{{Name: "work", Path: work}}})
+	f := New(options.Roots{List: []options.Root{{Name: "work", Path: work}}}, nil)
 
 	real, err := f.OpenImage("/a.png")
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestOpenImage(t *testing.T) {
 
 func TestListNotDir(t *testing.T) {
 	root := tree(t, "work/a.png")
-	f := New(options.Roots{List: []options.Root{{Name: "work", Path: filepath.Join(root, "work")}}})
+	f := New(options.Roots{List: []options.Root{{Name: "work", Path: filepath.Join(root, "work")}}}, nil)
 	_, err := f.List("/a.png")
 	assert.ErrorIs(t, err, ErrNotDir)
 }

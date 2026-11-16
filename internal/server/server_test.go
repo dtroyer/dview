@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/netip"
 	"testing"
 	"time"
@@ -64,7 +66,7 @@ func TestRunServesUntilCancelled(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { done <- Serve(ctx, listeners, Handler(Config{Log: io.Discard})) }()
+	go func() { done <- Serve(ctx, listeners, Handler(Config{})) }()
 
 	for _, l := range listeners {
 		code, body := get(t, "http://"+l.Addr().String()+"/")
@@ -92,8 +94,20 @@ func TestRunLogsAddresses(t *testing.T) {
 	var log bytes.Buffer
 	err := Run(ctx, Config{
 		Listen: []netip.AddrPort{netip.MustParseAddrPort("127.0.0.1:0")},
-		Log:    &log,
+		Log:    slog.New(slog.NewTextHandler(&log, nil)),
 	})
 	require.NoError(t, err)
-	assert.Contains(t, log.String(), "listening on http://127.0.0.1:")
+	assert.Contains(t, log.String(), "msg=listening url=http://127.0.0.1:")
+	assert.NotContains(t, log.String(), "level=DEBUG", "debug messages are off by default")
+}
+
+func TestDebugLogsRequests(t *testing.T) {
+	var log bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&log, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	srv := httptest.NewServer(Handler(Config{Log: logger, Debug: true}))
+	defer srv.Close()
+
+	code, _ := get(t, srv.URL+"/")
+	require.Equal(t, http.StatusOK, code)
+	assert.Contains(t, log.String(), "msg=request method=GET uri=/ status=200")
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -43,13 +44,18 @@ func newCommand(d deps) *cli.Command {
 	return &cli.Command{
 		Name:      "dview",
 		Usage:     "compare the generation metadata of two images side by side",
-		UsageText: "dview [--listen [<address>:]<port>] [--dir [<name>=]<path>]...",
+		UsageText: "dview [-x] [--listen [<address>:]<port>] [--dir [<name>=]<path>]...",
 		Writer:    d.stdout,
 		ErrWriter: d.stderr,
 		// Paths may contain commas, so --dir values must not be split.
 		DisableSliceFlagSeparator: true,
 		HideHelpCommand:           true,
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "debug",
+				Aliases: []string{"x"},
+				Usage:   "log major internal actions, including browser errors, to the console",
+			},
 			&cli.StringFlag{
 				Name:  "listen",
 				Value: options.DefaultListen,
@@ -66,14 +72,21 @@ func newCommand(d deps) *cli.Command {
 			if cmd.Args().Present() {
 				return fmt.Errorf("unexpected argument %q; dview takes only options", cmd.Args().First())
 			}
+			debug := cmd.Bool("debug")
+			log := newLogger(d.stderr, debug)
+			log.Debug("debug logging on")
+
 			spec, err := options.ParseListen(cmd.String("listen"))
 			if err != nil {
 				return err
 			}
+			log.Debug("parsed --listen", "value", cmd.String("listen"), "host", spec.Host, "port", spec.Port)
 			addrs, err := options.ResolveListen(ctx, spec, d.resolver, d.ifaceAddrs)
 			if err != nil {
 				return err
 			}
+			log.Debug("resolved listen addresses", "addrs", addrs)
+
 			cwd, err := d.getwd()
 			if err != nil {
 				return fmt.Errorf("finding the working directory: %w", err)
@@ -82,9 +95,24 @@ func newCommand(d deps) *cli.Command {
 			if err != nil {
 				return err
 			}
-			return d.run(ctx, server.Config{Listen: addrs, Roots: roots, Log: d.stdout})
+			for _, r := range roots.List {
+				log.Debug("top-level directory", "name", r.Name, "path", r.Path)
+			}
+			log.Debug("file tree", "virtual_root", roots.Virtual(), "whole_filesystem", roots.WholeFS)
+
+			return d.run(ctx, server.Config{Listen: addrs, Roots: roots, Log: log, Debug: debug})
 		},
 	}
+}
+
+// newLogger returns a text logger on w that includes debug messages when
+// debug is set.
+func newLogger(w io.Writer, debug bool) *slog.Logger {
+	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
+	if debug {
+		opts.Level = slog.LevelDebug
+	}
+	return slog.New(slog.NewTextHandler(w, opts))
 }
 
 func main() {

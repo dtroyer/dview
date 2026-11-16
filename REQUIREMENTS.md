@@ -230,6 +230,25 @@ compared against it.
      are always allowed. Resolved addresses that aren't on a local interface
      are skipped.
 7. All web assets (HTML, CSS, JavaScript) are embedded in the binary.
+   Browsers are told to check for a new copy on every load, so a new build
+   is never hidden by a cached old one.
+
+## Logging
+
+1. dview logs with the Go standard library's structured logger
+   (`log/slog`), as text, to standard error.
+2. By default it logs only the addresses it listens on and the directories
+   it serves, plus errors.
+3. The `-x` option (long form `--debug`) also logs major internal actions:
+   - the parsed options, resolved listen addresses and top-level
+     directories,
+   - every HTTP request, with its status, size and duration,
+   - directory listings, skipped symbolic links, image requests, metadata
+     reads and comparisons, and refused paths,
+   - messages and errors from the web page: page load, Open button clicks,
+     the file dialog opening, listing and closing, and any JavaScript error
+     or failed resource. The page sends these to the server only when `-x`
+     is on.
 
 ## Platform
 

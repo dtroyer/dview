@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -108,6 +109,22 @@ func TestDirOptionRepeatable(t *testing.T) {
 		{Name: filepath.Base(cwd), Path: cwd},
 	}, cfg.Roots.List)
 	assert.True(t, cfg.Roots.Virtual())
+}
+
+func TestDebugOption(t *testing.T) {
+	cwd := tempDir(t)
+
+	cfg, err := runDview(t, cwd)
+	require.NoError(t, err)
+	assert.False(t, cfg.Debug)
+	assert.False(t, cfg.Log.Enabled(context.Background(), slog.LevelDebug))
+
+	for _, flag := range []string{"-x", "--debug"} {
+		cfg, err = runDview(t, cwd, flag)
+		require.NoError(t, err)
+		assert.True(t, cfg.Debug, flag)
+		assert.True(t, cfg.Log.Enabled(context.Background(), slog.LevelDebug), flag)
+	}
 }
 
 func TestDirOptionError(t *testing.T) {
