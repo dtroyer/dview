@@ -78,6 +78,11 @@ brings up Forge (the URL at the top of the page). In Forge's txt2img tab,
 paste them into the Prompt box and click ↙ (Read generation parameters) to
 fill in all the settings.
 
+**Copy Image** puts that image on the clipboard, like a browser's right-click
+Copy Image, for pasting into Forge's img2img tab. JPEG and WebP images are
+copied as PNG. Copying needs the page to be opened on `localhost` or over
+https; otherwise use right-click Copy Image.
+
 _Current status: the first version of the UI works: choosing images with the
 built-in file dialog, showing them side by side, and the prompt and settings
 diff. Metadata is read from PNG, JPEG and WebP files._

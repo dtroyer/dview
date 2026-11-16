@@ -51,18 +51,23 @@ const dialogNames = () => $$(".picker-list li[data-path] .name").map((e) => e.te
 const filenames = () => $$(".filename").map((e) => e.textContent);
 const entry = (name) => $$(".picker-list li[data-path]").find((li) => li.querySelector(".name").textContent === name);
 
-async function openDialog(side) {
+// openDialog clicks an Open button and waits until the dialog shows the
+// listing for the folder it should start in.
+async function openDialog(side, startPath) {
   $(`button.open[data-side="${side}"]`).click();
   await waitFor("the dialog to open", () => dialog().open);
-  // Wait for the listing to arrive.
-  await waitFor("the dialog listing", () => $$(".picker-list li").length > 0 && dialogPath() !== "");
+  await waitFor(`the dialog to show ${startPath}`,
+    () => dialogPath() === startPath && $$(".picker-list li").length > 0);
 }
 
+// enter clicks a folder (or "..") and waits until its listing is shown.
 async function enter(name) {
   const before = dialogPath();
+  const target = name === ".." ? before.replace(/\/[^/]*$/, "") || "/"
+    : (before === "/" ? "" : before) + "/" + name;
   const li = await waitFor(`entry ${name}`, () => entry(name));
   li.click();
-  await waitFor(`the dialog to leave ${before}`, () => dialogPath() !== before);
+  await waitFor(`the dialog to show ${target}`, () => dialogPath() === target);
 }
 
 // ---- Steps -----------------------------------------------------------------
@@ -72,6 +77,7 @@ const steps = [
     await waitFor("the app", () => $("button.open") && w.dviewLog);
     expectEqual("Open buttons", $$("button.open").length, 2);
     expectEqual("Send buttons disabled", $$("button.send").map((b) => b.disabled), [true, true]);
+    expectEqual("Copy Image buttons disabled", $$("button.copy-image").map((b) => b.disabled), [true, true]);
     expectEqual("logo", $(".logo").textContent, "dView");
     expect("only-changes checkbox is disabled with no diff", $("#only-changes").disabled);
   }],
@@ -81,7 +87,7 @@ const steps = [
   }],
 
   ["left Open starts the dialog at the virtual root", async () => {
-    await openDialog(0);
+    await openDialog(0, "/");
     expectEqual("path", dialogPath(), "/");
     expectEqual("entries", dialogNames(), ["outputs", "work"]);
   }],
@@ -151,15 +157,19 @@ const steps = [
     expectEqual("Send disabled", $$("button.send").map((b) => b.disabled), [false, false]);
   }],
 
+  ["Copy Image is enabled once an image is shown", async () => {
+    expectEqual("Copy Image disabled", $$("button.copy-image").map((b) => b.disabled), [false, false]);
+  }],
+
   ["right Open has its own folder memory and starts at the top", async () => {
-    await openDialog(1);
+    await openDialog(1, "/");
     expectEqual("path", dialogPath(), "/");
   }],
 
   ["double-clicking one file replaces only that side", async () => {
     await enter("outputs");
     await enter("day1");
-    const li = entry("plain.png");
+    const li = await waitFor("entry plain.png", () => entry("plain.png"));
     li.dispatchEvent(new w.MouseEvent("dblclick", { bubbles: true }));
     await waitFor("the dialog to close", () => !dialog().open);
     await waitFor("file names", () => filenames().join() === "/outputs/day1/fox1.png,/outputs/day1/plain.png");
@@ -168,11 +178,13 @@ const steps = [
   ["an image without metadata says so and can't be sent", async () => {
     await waitFor("the note", () => $('.meta[data-side="1"]').textContent.includes("no generation metadata"));
     expectEqual("Send disabled", $$("button.send").map((b) => b.disabled), [false, true]);
+    expectEqual("Copy Image still enabled without metadata",
+      $$("button.copy-image").map((b) => b.disabled), [false, false]);
     expect("checkbox disabled without a diff", $("#only-changes").disabled);
   }],
 
   ["left Open remembers its folder; Cancel changes nothing", async () => {
-    await openDialog(0);
+    await openDialog(0, "/outputs/day1");
     expectEqual("path", dialogPath(), "/outputs/day1");
     $('#picker [data-action="cancel"]').click();
     await waitFor("the dialog to close", () => !dialog().open);
@@ -199,6 +211,28 @@ const steps = [
     input.value = expectedURL;
     input.dispatchEvent(new w.Event("input", { bubbles: true }));
     expect("valid again", !input.classList.contains("invalid"));
+  }],
+
+  ["Copy Image converts a JPEG to PNG", async () => {
+    // Run the page's own toPNG on a JPEG. Copying itself needs a real user's
+    // click, which a script can't give.
+    const src = await (await fetch("/app.js")).text();
+    const start = src.indexOf("async function toPNG(");
+    expect("toPNG found in app.js", start >= 0);
+    let depth = 0, end = -1;
+    for (let k = src.indexOf("{", start); k < src.length; k++) {
+      if (src[k] === "{") depth++;
+      if (src[k] === "}" && --depth === 0) { end = k + 1; break; }
+    }
+    const toPNG = new Function(src.slice(start, end) + "; return toPNG;")();
+    const jpg = await (await fetch("/api/image?path=" + encodeURIComponent("/work/photo.jpg"))).blob();
+    expectEqual("source type", jpg.type, "image/jpeg");
+    const png = await toPNG(jpg);
+    expectEqual("converted type", png.type, "image/png");
+    const bmp = await createImageBitmap(png);
+    expectEqual("size", [bmp.width, bmp.height], [40, 30]);
+    const passThrough = await (await fetch("/api/image?path=" + encodeURIComponent("/outputs/day1/fox1.png"))).blob();
+    expect("a PNG is passed through unchanged", (await toPNG(passThrough)) === passThrough);
   }],
 
   ["no JavaScript errors", async () => {

@@ -142,6 +142,7 @@ const picker = (() => {
       return new Promise((res) => {
         resolve = res;
         list.replaceChildren();
+        pathEl.textContent = ""; // don't show the last folder while this one loads
         dialog.showModal();
         list.focus();
         go(dir);
@@ -257,6 +258,9 @@ function renderMeta(panel, side, diff, onlyChanges = false) {
 
 function renderImage(i) {
   const img = state.images[i];
+  const copyBtn = $(`button.copy-image[data-side="${i}"]`);
+  copyBtn.disabled = !img;
+  copyBtn.title = img ? "Copy this image to the clipboard, for pasting into img2img" : "No image to copy";
   const name = $(`.filename[data-side="${i}"]`);
   name.textContent = img ? img.display : "No image";
   name.title = img ? img.display : "";
@@ -509,6 +513,58 @@ async function send(i) {
 
 for (const btn of sendButtons) {
   btn.addEventListener("click", () => send(Number(btn.dataset.side)));
+}
+
+// ---- Copy Image buttons -----------------------------------------------------
+
+// toPNG converts an image to PNG, the one image type every browser accepts
+// on the clipboard. PNG files are passed through unchanged.
+async function toPNG(blob) {
+  if (blob.type === "image/png") return blob;
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  canvas.getContext("2d").drawImage(bitmap, 0, 0);
+  if (bitmap.close) bitmap.close();
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((png) => (png ? resolve(png) : reject(new Error("couldn't convert it to PNG"))), "image/png");
+  });
+}
+
+async function copyImage(i) {
+  const img = state.images[i];
+  if (!img) return;
+  const rightClick = "Right-click the image and choose Copy Image instead.";
+  if (!window.isSecureContext || !navigator.clipboard || !navigator.clipboard.write ||
+      typeof ClipboardItem === "undefined") {
+    log("warn", "copy image unavailable", { secure: window.isSecureContext });
+    toast(`This browser can't copy images from this page (it needs https or localhost). ${rightClick}`, true);
+    return;
+  }
+  // The image is fetched and converted while the copy is already under way:
+  // Safari only allows the copy if it starts right away, in the click.
+  const png = fetch(`/api/image?path=${q(img.path)}`)
+    .then((resp) => {
+      if (!resp.ok) throw new Error(`the server answered ${resp.status}`);
+      return resp.blob();
+    })
+    .then(toPNG);
+  png.catch(() => {}); // a failure is reported through clipboard.write below
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+    const size = (await png).size;
+    log("debug", "copied image", { side: i, path: img.path, pngBytes: size });
+    toast(`Copied image ${i + 1}. In Forge's img2img tab, paste it into the image area ` +
+      "(click the image area, then press Ctrl+V or ⌘V).");
+  } catch (err) {
+    log("error", "copy image failed", { side: i, path: img.path, error: err.message });
+    toast(`Couldn't copy image ${i + 1}: ${err.message}. ${rightClick}`, true);
+  }
+}
+
+for (const btn of $$("button.copy-image")) {
+  btn.addEventListener("click", () => copyImage(Number(btn.dataset.side)));
 }
 
 // ---- Open buttons -------------------------------------------------------------

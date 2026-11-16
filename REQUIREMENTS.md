@@ -191,8 +191,8 @@ compared against it.
    - A header with space for a logo in the top-left corner. Until there is a
      logo, it shows "dView" in an Optima-like typeface. On the right of the
      header, the Forge URL box (see Sending to a back end).
-   - Open and Send buttons above each image, with the selected file's path
-     shown under them.
+   - Open, Send and Copy Image buttons above each image, with the selected
+     file's path shown under them.
    - The two images side by side.
    - Below each image, that image's metadata (see Metadata comparison).
    - Under image 2's metadata, the "Show only changed lines" checkbox.
@@ -238,6 +238,18 @@ txt2img tab, to be worked on further in another browser window.
 5. Copying uses the browser's Clipboard API, and falls back to the older
    copy command when the API isn't available or is refused (for example,
    when dview is reached over plain http on a network address).
+6. Each image also has a Copy Image button, which puts the image itself on
+   the clipboard, like a browser's right-click Copy Image, for pasting into
+   Forge's img2img tab:
+   - It is enabled whenever an image is shown, with or without metadata.
+   - The image is copied as PNG, the one image type every browser accepts
+     on the clipboard; JPEG and WebP images are converted. The clipboard
+     copy carries only the picture, not the generation metadata (Send
+     does that).
+   - Browsers only allow copying images from pages opened on `localhost`
+     or over https. Elsewhere, and if the copy is refused, a message
+     suggests right-click Copy Image instead.
+   - A message after copying says to paste it into img2img's image area.
 
 ## Web server
 
@@ -319,6 +331,7 @@ txt2img tab, to be worked on further in another browser window.
    - They need no tools beyond Go and the installed browser (and, for
      Safari, the `safaridriver` that ships with macOS). Each run uses a
      fresh, temporary browser profile.
-   - What they can't cover: Send's clipboard copy and opening the Forge tab
-     need a real user's click, which a script can't fake.
+   - What they can't cover: the clipboard copies (Send and Copy Image) and
+     opening the Forge tab need a real user's click, which a script can't
+     fake. The tests do check Copy Image's JPEG-to-PNG conversion.
    - Plain `make test` doesn't run them.

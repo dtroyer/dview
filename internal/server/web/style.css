@@ -122,7 +122,7 @@ body {
 .combo-menu li.empty { color: var(--muted); cursor: default; }
 .combo-menu li.empty:hover { background: none; }
 
-.buttons { display: flex; gap: 0.5rem; }
+.buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 /* A short message at the top of the page. */
 .toast {

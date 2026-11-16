@@ -29,6 +29,8 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -332,7 +334,7 @@ func startSafari(t *testing.T, bin, url string) *running {
 //	outputs/day1/fox2.png   metadata, differs from fox1
 //	outputs/day1/plain.png  no metadata
 //	outputs/day1/.hidden.png, notes.txt  not listed
-//	work/                   a second top-level directory
+//	work/photo.jpg          a second top-level directory, with a 40x30 JPEG
 func browserFixture(t *testing.T) options.Roots {
 	t.Helper()
 	root, err := filepath.EvalSymlinks(t.TempDir())
@@ -347,7 +349,13 @@ func browserFixture(t *testing.T) options.Roots {
 	writePNG(t, filepath.Join(day, "plain.png"), "")
 	writePNG(t, filepath.Join(day, ".hidden.png"), "")
 	require.NoError(t, os.WriteFile(filepath.Join(day, "notes.txt"), []byte("x"), 0o644))
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "work"), 0o755))
+	// A JPEG, to check that Copy Image converts it to PNG.
+	work := filepath.Join(root, "work")
+	require.NoError(t, os.MkdirAll(work, 0o755))
+	f, err := os.Create(filepath.Join(work, "photo.jpg"))
+	require.NoError(t, err)
+	require.NoError(t, jpeg.Encode(f, image.NewRGBA(image.Rect(0, 0, 40, 30)), nil))
+	require.NoError(t, f.Close())
 	return options.Roots{List: []options.Root{
 		{Name: "outputs", Path: filepath.Join(root, "outputs")},
 		{Name: "work", Path: filepath.Join(root, "work")},
