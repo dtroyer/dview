@@ -12,14 +12,30 @@
 <div class="app">
   <header class="topbar">
     <div class="logo" aria-label="dView">dView</div>
+    <div class="backend">
+      <label for="backend-url" class="label">Forge URL</label>
+      <div class="combo">
+        <input id="backend-url" type="url" placeholder="http://127.0.0.1:7860/"
+               spellcheck="false" autocomplete="off">
+        <button type="button" class="combo-toggle" aria-label="Recent URLs"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="backend-history">▾</button>
+        <ul id="backend-history" class="combo-menu panel" role="listbox" hidden></ul>
+      </div>
+    </div>
   </header>
 
   <div class="cell controls" data-side="0">
-    <button type="button" class="btn primary open" data-side="0">Open</button>
+    <div class="buttons">
+      <button type="button" class="btn primary open" data-side="0">Open</button>
+      <button type="button" class="btn secondary send" data-side="0" disabled>Send</button>
+    </div>
     <div class="filename" data-side="0">No image</div>
   </div>
   <div class="cell controls" data-side="1">
-    <button type="button" class="btn primary open" data-side="1">Open</button>
+    <div class="buttons">
+      <button type="button" class="btn primary open" data-side="1">Open</button>
+      <button type="button" class="btn secondary send" data-side="1" disabled>Send</button>
+    </div>
     <div class="filename" data-side="1">No image</div>
   </div>
 
@@ -33,6 +49,8 @@
     <label><input type="checkbox" id="only-changes" disabled> Show only changed lines</label>
   </div>
 </div>
+
+<div id="toast" class="toast panel" role="status" aria-live="polite" hidden></div>
 
 <dialog id="picker" class="panel picker" aria-labelledby="picker-title">
   <form method="dialog" class="picker-form">

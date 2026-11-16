@@ -44,7 +44,7 @@ func newCommand(d deps) *cli.Command {
 	return &cli.Command{
 		Name:      "dview",
 		Usage:     "compare the generation metadata of two images side by side",
-		UsageText: "dview [-x] [--listen [<address>:]<port>] [--dir [<name>=]<path>]...",
+		UsageText: "dview [-x] [--listen [<address>:]<port>] [--url <URL>] [--dir [<name>=]<path>]...",
 		Writer:    d.stdout,
 		ErrWriter: d.stderr,
 		// Paths may contain commas, so --dir values must not be split.
@@ -61,6 +61,11 @@ func newCommand(d deps) *cli.Command {
 				Value: options.DefaultListen,
 				Usage: "listen on `[<address>:]<port>`; the address may be an IPv4 address, " +
 					"a bracketed IPv6 address or a hostname",
+			},
+			&cli.StringFlag{
+				Name: "url",
+				Usage: "the Forge-style back end's `URL`, shown at the top of the page and used " +
+					"by the Send buttons, for example http://127.0.0.1:7860/",
 			},
 			&cli.StringSliceFlag{
 				Name: "dir",
@@ -100,7 +105,15 @@ func newCommand(d deps) *cli.Command {
 			}
 			log.Debug("file tree", "virtual_root", roots.Virtual(), "whole_filesystem", roots.WholeFS)
 
-			return d.run(ctx, server.Config{Listen: addrs, Roots: roots, Log: log, Debug: debug})
+			backendURL, err := options.ParseBackendURL(cmd.String("url"))
+			if err != nil {
+				return err
+			}
+			log.Debug("back end", "url", backendURL)
+
+			return d.run(ctx, server.Config{
+				Listen: addrs, Roots: roots, BackendURL: backendURL, Log: log, Debug: debug,
+			})
 		},
 	}
 }

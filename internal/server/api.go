@@ -16,18 +16,22 @@ import (
 
 // api serves the JSON and image endpoints used by the web UI.
 type api struct {
-	fs    *fsview.FS
-	log   *slog.Logger
-	debug bool
+	fs         *fsview.FS
+	log        *slog.Logger
+	debug      bool
+	backendURL string
 }
 
 // maxClientLog bounds the size of a message the browser can send to the log.
 const maxClientLog = 16 << 10
 
-// config handles GET /api/config, which tells the page whether to send its
-// own log messages to the server.
+// config handles GET /api/config: whether the page should send its own log
+// messages to the server, and the back end URL from --url.
 func (a *api) config(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]bool{"debug": a.debug})
+	writeJSON(w, http.StatusOK, struct {
+		Debug bool   `json:"debug"`
+		URL   string `json:"url"`
+	}{a.debug, a.backendURL})
 }
 
 // clientLog handles POST /api/log: a log message from the browser. It is
@@ -130,6 +134,9 @@ type side struct {
 	Name    string `json:"name"`
 	// Params is nil when the metadata is missing or unreadable.
 	Params *meta.Params `json:"params"`
+	// Raw is the metadata text exactly as stored in the image, which Forge
+	// can read back with its "Read generation parameters" button.
+	Raw string `json:"raw,omitempty"`
 	// Status is "ok", "missing" or "unreadable".
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
@@ -167,6 +174,7 @@ func (a *api) loadSide(p string) (*side, error) {
 	default:
 		params := meta.Parse(text)
 		s.Params = &params
+		s.Raw = text
 	}
 	attrs := []any{"path", p, "file", real, "status", s.Status}
 	if s.Params != nil {

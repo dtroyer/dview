@@ -127,6 +127,22 @@ func TestDebugOption(t *testing.T) {
 	}
 }
 
+func TestURLOption(t *testing.T) {
+	cwd := tempDir(t)
+
+	cfg, err := runDview(t, cwd)
+	require.NoError(t, err)
+	assert.Empty(t, cfg.BackendURL)
+
+	cfg, err = runDview(t, cwd, "--url", "http://127.0.0.1:7860/")
+	require.NoError(t, err)
+	assert.Equal(t, "http://127.0.0.1:7860/", cfg.BackendURL)
+
+	cfg, err = runDview(t, cwd, "--url", "127.0.0.1:7860")
+	require.ErrorContains(t, err, "invalid --url")
+	assert.Nil(t, cfg)
+}
+
 func TestDirOptionError(t *testing.T) {
 	cwd := tempDir(t)
 	cfg, err := runDview(t, cwd, "--dir", filepath.Join(cwd, "missing"))

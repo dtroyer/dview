@@ -26,13 +26,14 @@ make clean      # remove build output
 ```
 
 ```bash
-./bin/dview [-x] [--listen [<address>:]<port>] [--dir [<name>=]<path>]...
+./bin/dview [-x] [--listen [<address>:]<port>] [--url <URL>] [--dir [<name>=]<path>]...
 ```
 
 | Option | Default | Meaning |
 | ------ | ------- | ------- |
 | `-x`, `--debug` | off | Log major internal actions to the console: option parsing, every request, directory listings, metadata reads, and messages and errors sent back from the browser page. |
 | `--listen [<address>:]<port>` | `localhost:8008` | Address and port to listen on. The address may be an IPv4 address, a bracketed IPv6 address such as `[::]`, or a hostname. A port alone keeps `localhost`. |
+| `--url <URL>` | last used | Address of a Forge-like back end, for the **Send** buttons, for example `http://127.0.0.1:7860/`. It can also be edited at the top of the page, which remembers the last 4. |
 | `--dir [<name>=]<path>` | none | Also allow files under `<path>`, shown as `/<name>`. Can be repeated. The working directory is always allowed. An unnamed `--dir /` allows the whole filesystem. |
 
 Examples:
@@ -47,6 +48,11 @@ dview runs until you press Ctrl-C (or it gets SIGTERM).
 Open `http://localhost:8008/` in a browser, use the **Open** button above
 either image to pick files, and the metadata of the two images is compared
 below them.
+
+**Send** copies that image's generation parameters to the clipboard and
+brings up Forge (the URL at the top of the page). In Forge's txt2img tab,
+paste them into the Prompt box and click ↙ (Read generation parameters) to
+fill in all the settings.
 
 _Current status: the first version of the UI works: choosing images with the
 built-in file dialog, showing them side by side, and the prompt and settings

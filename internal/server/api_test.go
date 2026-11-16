@@ -119,6 +119,8 @@ func TestAPICompare(t *testing.T) {
 	require.NotNil(t, c.B)
 	assert.Equal(t, "a.png", c.A.Display)
 	assert.Equal(t, "a red fox", c.A.Params.Prompt)
+	// The raw text is passed through unchanged, for the Send button.
+	assert.Equal(t, "a red fox\nNegative prompt: blurry\nSteps: 30, Sampler: Euler, CFG scale: 7", c.A.Raw)
 	require.NotNil(t, c.Diff)
 	assert.Equal(t, "a[- red-]{+ grey+} fox", showSegs(c.Diff.Prompt))
 	assert.Len(t, c.Diff.Settings, 4) // Steps, Sampler, -CFG, +CFG
@@ -135,6 +137,7 @@ func TestAPICompare(t *testing.T) {
 	assert.Equal(t, "missing", c.A.Status)
 	assert.Equal(t, "unreadable", c.B.Status)
 	assert.NotEmpty(t, c.B.Error)
+	assert.Empty(t, c.A.Raw)
 	assert.Nil(t, c.Diff)
 
 	var e map[string]string
@@ -159,11 +162,12 @@ func showSegs(segs []diff.Segment) string {
 func TestAPIConfigAndClientLog(t *testing.T) {
 	// Without debug logging, the page is told not to send messages, and
 	// messages are refused.
-	plain := httptest.NewServer(Handler(Config{}))
+	plain := httptest.NewServer(Handler(Config{BackendURL: "http://127.0.0.1:7860/"}))
 	defer plain.Close()
-	var cfg map[string]bool
+	var cfg map[string]any
 	require.Equal(t, http.StatusOK, getJSON(t, plain, "/api/config", &cfg))
-	assert.False(t, cfg["debug"])
+	assert.Equal(t, false, cfg["debug"])
+	assert.Equal(t, "http://127.0.0.1:7860/", cfg["url"])
 	resp, err := http.Post(plain.URL+"/api/log", "application/json", strings.NewReader(`{"msg":"x"}`))
 	require.NoError(t, err)
 	resp.Body.Close()
@@ -175,7 +179,8 @@ func TestAPIConfigAndClientLog(t *testing.T) {
 	dbg := httptest.NewServer(Handler(Config{Log: logger, Debug: true}))
 	defer dbg.Close()
 	require.Equal(t, http.StatusOK, getJSON(t, dbg, "/api/config", &cfg))
-	assert.True(t, cfg["debug"])
+	assert.Equal(t, true, cfg["debug"])
+	assert.Equal(t, "", cfg["url"])
 
 	resp, err = http.Post(dbg.URL+"/api/log", "application/json",
 		strings.NewReader(`{"level":"error","msg":"boom","data":{"line":12}}`))

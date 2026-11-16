@@ -189,9 +189,10 @@ compared against it.
    rounded panels, and compact labeled fields.
 3. The page layout, from top to bottom:
    - A header with space for a logo in the top-left corner. Until there is a
-     logo, it shows "dView" in an Optima-like typeface.
-   - An Open button above each image, with the selected file's path shown
-     under the button.
+     logo, it shows "dView" in an Optima-like typeface. On the right of the
+     header, the Forge URL box (see Sending to a back end).
+   - Open and Send buttons above each image, with the selected file's path
+     shown under them.
    - The two images side by side.
    - Below each image, that image's metadata (see Metadata comparison).
    - Under image 2's metadata, the "Show only changed lines" checkbox.
@@ -202,6 +203,41 @@ compared against it.
      doesn't fit.
 5. On narrow screens (phones), the space around the images is reduced so
    they stay usable.
+
+## Sending to a back end
+
+Either image's generation metadata can be sent to a Forge-like back end's
+txt2img tab, to be worked on further in another browser window.
+
+1. Stock Forge has no way for another program to fill in the txt2img form
+   in a browser tab that is already open. So sending uses Forge's own
+   "Read generation parameters" button (↙ next to the Prompt box):
+   - Send copies the image's metadata text to the clipboard, exactly as it
+     is stored in the image (A1111 format).
+   - Send then brings up the Forge tab that dView opened before, without
+     reloading it, so nothing in it is lost. If there is none, it opens the
+     Forge URL in a new tab.
+   - The user pastes the text into the txt2img Prompt box and clicks ↙,
+     which fills in the prompt, negative prompt and settings.
+   - A message on the page says what was copied and what to do next. If the
+     browser blocks opening the tab, the message says to switch to Forge
+     by hand.
+2. The `--url <URL>` option gives the back end's address. It must be an
+   `http://` or `https://` URL with a host, or dview exits with an error.
+   Without `--url`, the page starts with the last URL used in that browser.
+3. The header shows the URL in a text box that can be edited. A ▾ button
+   next to it opens a menu of the last 4 URLs used, most recent first.
+   - A URL is added to the menu when it is finished being edited (Enter or
+     leaving the box), picked from the menu, used by Send, or given with
+     `--url`.
+   - A box that doesn't hold a valid URL is outlined in red, and invalid
+     URLs are not added to the menu.
+   - The menu is kept in the browser, like the remembered directories.
+4. Each image has a Send button next to its Open button. It is disabled
+   when that image has no generation metadata.
+5. Copying uses the browser's Clipboard API, and falls back to the older
+   copy command when the API isn't available or is refused (for example,
+   when dview is reached over plain http on a network address).
 
 ## Web server
 

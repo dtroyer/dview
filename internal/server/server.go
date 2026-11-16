@@ -29,6 +29,8 @@ type Config struct {
 	Listen []netip.AddrPort
 	// Roots holds the top-level directories files may be served from.
 	Roots options.Roots
+	// BackendURL is the Forge-style back end the page starts with, or empty.
+	BackendURL string
 	// Log receives status messages, and debug messages when Debug is set. A
 	// nil Log discards everything.
 	Log *slog.Logger
@@ -136,7 +138,7 @@ func Handler(cfg Config) http.Handler {
 		panic(err) // the embedded directory is fixed at build time
 	}
 	log := cfg.logger()
-	a := &api{fs: fsview.New(cfg.Roots, log), log: log, debug: cfg.Debug}
+	a := &api{fs: fsview.New(cfg.Roots, log), log: log, debug: cfg.Debug, backendURL: cfg.BackendURL}
 	mux := http.NewServeMux()
 	mux.Handle("GET /", noCache(http.FileServerFS(static)))
 	mux.HandleFunc("GET /api/config", a.config)

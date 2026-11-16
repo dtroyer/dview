@@ -291,6 +291,7 @@ function renderComparison() {
   }
   renderMeta(panels[0], resp.a, null);
   renderMeta(panels[1], resp.b, resp.diff, state.onlyChanges);
+  updateSendButtons();
 }
 
 onlyChangesBox.addEventListener("change", () => {
@@ -307,6 +308,7 @@ async function refresh() {
   if (!a && !b) {
     state.last = null;
     renderComparison();
+    updateSendButtons();
     return;
   }
   const seq = ++refreshSeq;
@@ -324,8 +326,189 @@ async function refresh() {
     log("error", "compare failed", { error: err.message });
     state.last = null;
     onlyChangesBox.disabled = true;
+    updateSendButtons();
     panels.forEach((p) => p.replaceChildren(note(`Couldn't load metadata: ${err.message}`)));
   }
+}
+
+// ---- Messages -------------------------------------------------------------------
+
+const toastEl = $("#toast");
+let toastTimer = 0;
+
+function toast(text, isError = false) {
+  toastEl.textContent = text;
+  toastEl.classList.toggle("error", isError);
+  toastEl.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.hidden = true; }, 10000);
+}
+toastEl.addEventListener("click", () => { toastEl.hidden = true; });
+
+// ---- Back end URL -----------------------------------------------------------
+
+const MAX_URLS = 4;
+const urlInput = $("#backend-url");
+const urlToggle = $(".combo-toggle");
+const urlMenu = $("#backend-history");
+
+function validURL(s) {
+  try {
+    const u = new URL(s);
+    return (u.protocol === "http:" || u.protocol === "https:") && u.host !== "";
+  } catch { return false; }
+}
+
+// The last few URLs used, most recent first, kept in the browser.
+state.urls = (() => {
+  try {
+    const v = JSON.parse(localStorage.getItem("dview.urls") || "[]");
+    return Array.isArray(v) ? v.filter((u) => typeof u === "string" && validURL(u)).slice(0, MAX_URLS) : [];
+  } catch { return []; }
+})();
+
+function rememberURL(url) {
+  if (!validURL(url)) return;
+  state.urls = [url, ...state.urls.filter((u) => u !== url)].slice(0, MAX_URLS);
+  try { localStorage.setItem("dview.urls", JSON.stringify(state.urls)); } catch { /* not available */ }
+}
+
+function checkURL() {
+  const v = urlInput.value.trim();
+  urlInput.classList.toggle("invalid", v !== "" && !validURL(v));
+}
+
+function closeMenu() {
+  urlMenu.hidden = true;
+  urlToggle.setAttribute("aria-expanded", "false");
+}
+
+function openMenu() {
+  const items = state.urls.map((u) => {
+    const li = el("li", { role: "option", textContent: u, title: u });
+    li.setAttribute("aria-selected", u === urlInput.value.trim());
+    li.addEventListener("click", () => {
+      urlInput.value = u;
+      checkURL();
+      rememberURL(u);
+      closeMenu();
+      log("debug", "back end URL chosen from history", { url: u });
+    });
+    return li;
+  });
+  if (items.length === 0) items.push(el("li", { className: "empty", textContent: "No recent URLs" }));
+  urlMenu.replaceChildren(...items);
+  urlMenu.hidden = false;
+  urlToggle.setAttribute("aria-expanded", "true");
+}
+
+urlToggle.addEventListener("click", () => (urlMenu.hidden ? openMenu() : closeMenu()));
+document.addEventListener("click", (ev) => { if (!ev.target.closest(".combo")) closeMenu(); });
+urlInput.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") closeMenu();
+  if (ev.key === "ArrowDown") { ev.preventDefault(); openMenu(); }
+});
+urlInput.addEventListener("input", checkURL);
+// "change" fires when an edit is finished: Enter or leaving the box.
+urlInput.addEventListener("change", () => {
+  const v = urlInput.value.trim();
+  if (validURL(v)) {
+    rememberURL(v);
+    log("debug", "back end URL set", { url: v });
+  }
+});
+
+// The URL from --url wins; otherwise start with the last one used.
+(async () => {
+  let fromServer = "";
+  try { fromServer = (await getJSON("/api/config")).url || ""; } catch { /* use history */ }
+  urlInput.value = fromServer || state.urls[0] || "";
+  if (fromServer) rememberURL(fromServer);
+  checkURL();
+})();
+
+// ---- Send buttons -----------------------------------------------------------
+
+const sendButtons = $$("button.send");
+
+// sideData returns image i's entry from the last comparison.
+function sideData(i) {
+  return state.last ? (i === 0 ? state.last.a : state.last.b) : null;
+}
+
+function updateSendButtons() {
+  for (const btn of sendButtons) {
+    const side = sideData(Number(btn.dataset.side));
+    btn.disabled = !(side && side.raw);
+    btn.title = btn.disabled ? "This image has no generation metadata to send"
+      : "Copy this image's generation parameters and switch to Forge";
+  }
+}
+
+// copyText puts text on the clipboard. The Clipboard API needs a secure
+// context (https or localhost) and permission; without them, fall back to
+// the older copy command.
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (err) {
+      log("warn", "Clipboard API refused, using the copy command", { error: err.message });
+    }
+  }
+  const ta = el("textarea", { value: text });
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.append(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  ta.remove();
+  if (!ok) throw new Error("the browser refused to copy");
+}
+
+// openBackend brings up the Forge tab that dView opened earlier, or opens a
+// new one. An existing tab is not reloaded, so nothing in it is lost.
+function openBackend(url) {
+  const w = window.open("", "dview-backend");
+  if (!w) return false; // blocked by the browser
+  let isNew;
+  try { isNew = w.location.href === "about:blank"; } catch { isNew = false; } // a Forge page: other origin
+  if (isNew) {
+    w.opener = null;
+    w.location.href = url;
+  }
+  w.focus();
+  return true;
+}
+
+async function send(i) {
+  const side = sideData(i);
+  if (!side || !side.raw) return;
+  const url = urlInput.value.trim();
+  if (!validURL(url)) {
+    toast("Enter the Forge URL at the top of the page first, for example http://127.0.0.1:7860/", true);
+    urlInput.focus();
+    return;
+  }
+  rememberURL(url);
+  try {
+    await copyText(side.raw);
+  } catch (err) {
+    log("error", "copy to clipboard failed", { side: i, error: err.message });
+    toast(`Couldn't copy image ${i + 1}'s parameters: ${err.message}`, true);
+    return;
+  }
+  const opened = openBackend(url);
+  log("debug", "sent parameters", { side: i, url, chars: side.raw.length, opened });
+  const how = "In Forge's txt2img tab, paste them into the Prompt box and click ↙ " +
+    "(Read generation parameters) to fill in the settings.";
+  toast(opened ? `Copied image ${i + 1}'s parameters. ${how}`
+    : `Copied image ${i + 1}'s parameters. The browser blocked opening Forge, so switch to it yourself. ${how}`);
+}
+
+for (const btn of sendButtons) {
+  btn.addEventListener("click", () => send(Number(btn.dataset.side)));
 }
 
 // ---- Open buttons -------------------------------------------------------------

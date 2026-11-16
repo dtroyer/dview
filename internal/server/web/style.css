@@ -66,6 +66,79 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.topbar { gap: 1.5rem; flex-wrap: wrap; }
+
+/* The back end URL: a text box with a menu of recent values. */
+.backend { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; min-width: 0; }
+.backend .label { margin: 0; white-space: nowrap; }
+.combo { position: relative; display: flex; min-width: 0; }
+.combo input {
+  width: min(26rem, 45vw);
+  min-width: 10rem;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: var(--radius) 0 0 var(--radius);
+  outline: none;
+}
+.combo input:focus { border-color: var(--accent); }
+.combo input.invalid { border-color: var(--del-fg); }
+.combo-toggle {
+  padding: 0 0.6rem;
+  font: inherit;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  cursor: pointer;
+}
+.combo-toggle:hover, .combo-toggle[aria-expanded="true"] { color: var(--text); background: #374151; }
+.combo-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.combo-menu li {
+  padding: 0.35rem 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.combo-menu li:hover, .combo-menu li[aria-selected="true"] { background: rgba(249, 115, 22, 0.22); }
+.combo-menu li.empty { color: var(--muted); cursor: default; }
+.combo-menu li.empty:hover { background: none; }
+
+.buttons { display: flex; gap: 0.5rem; }
+
+/* A short message at the top of the page. */
+.toast {
+  position: fixed;
+  top: 4.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(40rem, 92vw);
+  padding: 0.7rem 1rem;
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.toast.error { border-color: var(--del-fg); }
+
 /* Space reserved for a logo; text stands in for now. */
 .logo {
   min-width: 8rem;
