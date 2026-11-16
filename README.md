@@ -41,9 +41,11 @@ Examples:
 ./bin/dview --listen '[::]:8008' --dir /data/outputs --dir old=/archive/outputs
 ```
 
-_Current status: the options are parsed and checked, but the web server is
-a stub. dview prints the addresses it would listen on and the directories it
-would serve, then exits._
+dview runs until you press Ctrl-C (or it gets SIGTERM).
+
+_Current status: the options are parsed and checked, and the web server
+listens on the requested addresses. It serves only a placeholder page; the
+image comparison UI isn't implemented yet._
 
 ## Project layout
 
@@ -52,7 +54,8 @@ would serve, then exits._
 | `REQUIREMENTS.md` | Detailed requirements |
 | `main.go` | Command-line handling (urfave/cli/v3) |
 | `internal/options/` | Parsing and checking `--listen` and `--dir` |
-| `internal/server/` | Web server (stub for now) |
+| `internal/server/` | Web server and listeners |
+| `internal/server/web/` | Web UI files, embedded in the binary |
 | `*_test.go` | Tests (stretchr/testify) |
 | `Makefile` | Build and test targets |
 | `go.mod` | Go module definition (`dview`) |

@@ -8,6 +8,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/urfave/cli/v3"
 
@@ -87,7 +89,11 @@ func newCommand(d deps) *cli.Command {
 
 func main() {
 	d := defaultDeps()
-	if err := newCommand(d).Run(context.Background(), os.Args); err != nil {
+	// Ctrl-C or SIGTERM cancels the context, which shuts the server down.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := newCommand(d).Run(ctx, os.Args); err != nil {
+		stop()
 		fmt.Fprintln(d.stderr, "dview:", err)
 		os.Exit(1)
 	}

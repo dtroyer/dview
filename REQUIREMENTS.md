@@ -194,7 +194,9 @@ compared against it.
 5. A hostname is resolved with a DNS lookup when dview starts. dview listens
    on every resolved address that is on a local network interface.
    Exception: `localhost` (including the default) listens on `[::1]` and
-   `127.0.0.1`.
+   `127.0.0.1`. Both are needed: tested on 2026-11-16 on Linux and macOS, a
+   socket on `[::1]` alone refuses IPv4 connections to `127.0.0.1`. Only the
+   `[::]` wildcard accepts both IPv4 and IPv6.
 6. dview checks the address before it starts listening. It exits with an
    error message if:
    - the `--listen` value doesn't match the format (the message shows the
@@ -218,10 +220,3 @@ compared against it.
 2. Build and test with GNU Make (`make build`, `make test`).
 3. Command-line options are handled with `github.com/urfave/cli/v3`.
 4. Tests use `github.com/stretchr/testify`.
-
-## To verify
-
-- Once `--listen` is implemented: does a socket on `[::1]` alone accept
-  IPv4 connections to `127.0.0.1` on Linux? If it does, `localhost` can
-  listen on `[::1]` only and the separate `127.0.0.1` listener can be
-  dropped.
