@@ -1,4 +1,4 @@
-# dview Requirements
+# dView Requirements
 
 This file lists the specific requirements for dview as they are identified.
 The project overview is in [README.md](README.md).
@@ -13,12 +13,11 @@ The project overview is in [README.md](README.md).
 
 ## Choosing images
 
-1. Images are files on the machine running the dview server, not on the
-   machine running the browser.
-2. Images are chosen with a file open dialog built into the dview web UI.
-   dview implements it: the server lists directories, and the page shows
-   them. The browser's own file dialog is not used, because it can only pick
-   files on the browser's machine and never tells the page their paths.
+1. dView operates on image that are on the system where it is running, not on
+   the system where the browser is running (when they are not the same system).
+2. The file open dialog is built into the dView web UI so it can show images
+   on the system where it is running; the browser's own file dialog is not used
+   as it can only pick files on the browser's local filesystem.
 3. The file dialog:
    - Is styled to match the rest of the UI.
    - Is opened by an Open button above each image (see User interface).
@@ -58,11 +57,13 @@ The project overview is in [README.md](README.md).
    deselects it. Double-clicking a file opens just that file. Enter opens the
    selection and Escape cancels.
 6. Access is limited to a set of top-level directories:
-   - The directory dview was started from (its working directory) is always
+   - The directory dView was started from (its working directory) is always
      one of them.
    - Each `--dir [<name>=]<path>` option adds another. `--dir` can be given
      more than once. A relative `<path>` is relative to the working
-     directory.
+     directory. A leading `~` character in the path makes the path relative
+     to the current user's home directory (remember this is the user running
+     dView, not the browser user).
    - `<name>` is optional and sets the directory's name in the virtual root
      (see below). Without it, the name is the directory's base name. The
      name is the text before the first `=`, so a path that contains `=` must
@@ -70,7 +71,7 @@ The project overview is in [README.md](README.md).
    - A name can't be empty or contain `/`.
    - Everything below a top-level directory is available. Nothing above
      them is.
-   - dview exits with an error message if a `--dir` path doesn't exist or
+   - dView exits with an error message if a `--dir` path doesn't exist or
      isn't a directory, if a name is invalid, or if two top-level
      directories end up with the same name. The duplicate-name message
      suggests the `name=path` form.
@@ -86,14 +87,13 @@ The project overview is in [README.md](README.md).
    them in a virtual root, `/`:
    - Each top-level directory appears in the virtual root as `/<name>`.
      `<name>` is the name given with `--dir name=path`, or else the
-     directory's base name (like `basename`). The working directory is
-     shown by its base name, like `$(basename $PWD)`. For example,
+     directory's base name like `$(basename $PWD)` in a shell. For example,
      `dview --dir /data/outputs --dir old=/archive/outputs` started in
      `/home/me/work` shows `/outputs`, `/old` and `/work`.
    - They are listed with the `--dir` directories first, in the order given
      on the command line, then the working directory.
-   - Paths are shown from the virtual root, for example
-     `/dir1/2026-11-16/00042-123456.png`.
+   - Paths are shown from the virtual root, for example the options above might
+     produce a filename of `/old/2026-11-16/00042-123456.png`.
    - The virtual root is the highest level; you can't go above it.
    - With only one top-level directory (no `--dir`), there is no virtual
      root, and paths are shown relative to the working directory.
@@ -105,10 +105,8 @@ The project overview is in [README.md](README.md).
     with a name (`--dir all=/`), it is an ordinary entry in the virtual
     root, like any other top-level directory.
 11. The server reads the selected files from disk and parses their metadata.
-   The browser asks the server for the image and the parsed metadata.
-12. Comparing more than two images may be added later. It is not an initial
-    requirement.
-13. Excluding paths from the allowed directories (for example, disallowing
+    The browser asks the server for the image and the parsed metadata.
+12. Excluding paths from the allowed directories (for example, disallowing
     `/etc` when `/` is allowed) may be added later. It is not an initial
     requirement.
 
@@ -124,10 +122,8 @@ The project overview is in [README.md](README.md).
      line. It can span several lines.
    - **Negative prompt:** the text after `Negative prompt:`, up to the
      settings line. It can span several lines and may be missing.
-   - **Settings:** the last line, made of comma-separated `Key: value` pairs
-     (for example `Steps`, `Sampler`, `CFG scale`, `Seed`, `Size`, `Model`,
-     `Model hash`). Values may be quoted and may contain commas inside the
-     quotes.
+   - **Settings:** the last line, consisting of comma-separated `Key: value` pairs
+     (for example `Steps: 10, Sampler: DPM++ 2S a, CFG scale: 6` and so on). Values may be quoted and may contain commas inside the quotes.
 4. If an image has no metadata, or the metadata can't be parsed, show the
    image anyway and say that its metadata is missing or unreadable.
 
@@ -138,9 +134,9 @@ metadata is shown in the column below it. Image 1 is the base, and image 2 is
 compared against it.
 
 1. **Prompt:**
-   - Under image 1, the prompt is shown as-is.
-   - Under image 2, the prompt is shown as an inline text diff against
-     image 1's prompt. Text that image 2 adds is shown in green. Text that
+   - Under image 1, the metadata is shown as-is.
+   - Under image 2, the metadata is shown as an inline text diff against
+     image 1's metadata. Text that image 2 adds is shown in green. Text that
      image 2 removes (present in image 1 but not image 2) is shown in red,
      without strikethrough.
      Unchanged text is shown normally.
@@ -181,7 +177,7 @@ compared against it.
 
 ## User interface
 
-1. The UI is a web page served by the dview binary. Nothing else needs to be
+1. The UI is a web page served by the dView binary. Nothing else needs to be
    installed or run.
 2. The UI has the look and feel of the Stable Diffusion WebUI Forge
    interface (a Gradio-style layout): a dark theme by default, an orange
@@ -223,7 +219,7 @@ txt2img tab, to be worked on further in another browser window.
      browser blocks opening the tab, the message says to switch to Forge
      by hand.
 2. The `--url <URL>` option gives the back end's address. It must be an
-   `http://` or `https://` URL with a host, or dview exits with an error.
+   `http://` or `https://` URL with a host, or dView exits with an error.
    Without `--url`, the page starts with the last URL used in that browser.
 3. The header shows the URL in a text box that can be edited. A ▾ button
    next to it opens a menu of the last 4 URLs used, most recent first.
@@ -237,7 +233,7 @@ txt2img tab, to be worked on further in another browser window.
    when that image has no generation metadata.
 5. Copying uses the browser's Clipboard API, and falls back to the older
    copy command when the API isn't available or is refused (for example,
-   when dview is reached over plain http on a network address).
+   when dView is reached over plain http on a network address).
 6. Each image also has a Copy Image button, which puts the image itself on
    the clipboard, like a browser's right-click Copy Image, for pasting into
    Forge's img2img tab:
@@ -253,15 +249,15 @@ txt2img tab, to be worked on further in another browser window.
 
 ## Web server
 
-1. The dview binary is the web server.
+1. The dView binary is the web server.
 2. By default it listens on `localhost` port `8008`, so only this machine can
    connect.
 3. The `--listen` option sets the listen address and port. Its argument has
    the form `[<address>:]<port>`:
-   - `<port>` is an integer and is required.
    - `<address>` is optional. It can be an IPv4 address, an IPv6 address, or
      a hostname. An IPv6 address is written in square brackets, as in `[::]`
      or `[::1]`, so its colons aren't mistaken for the port separator.
+   - `<port>` is an integer and is required.
    - If only `<port>` is given, only the port changes and the address stays
      `localhost`.
 4. Examples:
@@ -270,13 +266,13 @@ txt2img tab, to be worked on further in another browser window.
    - `--listen [::]:8008` listens on all interfaces (IPv6, and IPv4 where the
      OS allows dual-stack).
    - `--listen 127.0.0.1:8080` listens on the IPv4 loopback address.
-5. A hostname is resolved with a DNS lookup when dview starts. dview listens
+5. A hostname is resolved with a DNS lookup when dView starts. dView listens
    on every resolved address that is on a local network interface.
    Exception: `localhost` (including the default) listens on `[::1]` and
    `127.0.0.1`. Both are needed: tested on 2026-11-16 on Linux and macOS, a
    socket on `[::1]` alone refuses IPv4 connections to `127.0.0.1`. Only the
    `[::]` wildcard accepts both IPv4 and IPv6.
-6. dview checks the address before it starts listening. It exits with an
+6. dView checks the address before it starts listening. It exits with an
    error message if:
    - the `--listen` value doesn't match the format (the message shows the
      expected format),
@@ -292,7 +288,7 @@ txt2img tab, to be worked on further in another browser window.
 
 ## Logging
 
-1. dview logs with the Go standard library's structured logger
+1. dView logs with the Go standard library's structured logger
    (`log/slog`), as text, to standard error.
 2. By default it logs only the addresses it listens on and the directories
    it serves, plus errors.
@@ -306,7 +302,6 @@ txt2img tab, to be worked on further in another browser window.
      the file dialog opening, listing and closing, and any JavaScript error
      or failed resource. The page sends these to the server only when
      `--debug` is on.
-4. `--debug` replaced the earlier `-x`, which is no longer accepted.
 
 ## Configuration
 
@@ -322,16 +317,15 @@ txt2img tab, to be worked on further in another browser window.
    the environment and the config file; they are not combined.
 3. The config file is YAML, read once at startup. Only one file is read:
    - `--config <file>` names it. Otherwise the `DVIEW_CONFIG` environment
-     variable does. A relative name is relative to the directory dview is
+     variable does. A relative name is relative to the directory dView is
      started in. A named file must exist, or dview exits with an error.
-   - When no file is named, dview reads the first of these that exists:
-     1. `./.dview.yaml`, then `./.dview.yml`, in the directory dview is
-        started in,
+   - When no file is named, dView reads the first of these that exists:
+     1. `./.dview.yaml`, then `./.dview.yml`, in the dView working directory,
      2. `$XDG_CONFIG_HOME/dview.yaml`, then `dview.yml`, when
         `XDG_CONFIG_HOME` is set,
      3. `$HOME/.config/dview.yaml`, then `$HOME/.config/dview.yml`.
    - When none of them exists, the defaults are used; that is not an error.
-   - Unknown settings, and invalid YAML, are errors that stop dview, so
+   - Unknown settings, and invalid YAML, are errors that stop dView, so
      typos aren't silently ignored.
    - `dir` is a list of `[<name>=]<path>` values, or a single one.
 4. Environment variables:
@@ -342,8 +336,8 @@ txt2img tab, to be worked on further in another browser window.
    - An empty variable counts as not set.
 5. In the config file and environment variables, a path starting with `~`
    means the home directory, as the shell does on the command line.
-   Relative paths are relative to the directory dview is started in.
-6. `--show-config` prints the settings dview would use, combined from all
+   Relative paths are relative to the dView working directory.
+6. `--show-config` prints the settings dView would use, combined from all
    sources and including defaults, as the contents of a `dview.yaml`, to
    standard output, then exits without starting the server and with no
    other output. Its output can be saved as the config file.
@@ -361,8 +355,8 @@ txt2img tab, to be worked on further in another browser window.
 
 ## Platform
 
-1. The target platform is Linux, with IPv4 and IPv6 dual-stack networking.
-   Other platforms may be supported later.
+1. The target platforms are macOS and Linux, with IPv4 and IPv6 dual-stack
+   networking. Other platforms may be supported later.
 
 ## Build and development
 

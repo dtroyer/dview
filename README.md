@@ -1,14 +1,15 @@
-# dview
+# dView
 
 ## Description
 
-dview is an image viewer for comparing generated images. It shows two images
-side by side and lists the differences in their metadata below them. The goal
-is to compare the prompts and settings used to generate the images and see
-what differs between them.
+dView is an image viewer for comparing image metadata. It shows two images
+and a diff of the image metadata.  Currently it only compares the `parameters`
+field as used by A1111/Forge-style front-ends and only reads PNG, JPEG and
+WebP image formats.
 
-dview runs as a small web server (port 8008 by default) and is used from a
-web browser. Its interface is styled after Stable Diffusion WebUI Forge.
+dView is a command-line binary and runs a small web server (http://localhost:8008
+by default) to expose its user interface in a web browser. Its interface is
+styled after Stable Diffusion WebUI Forge.
 
 ## Requirements
 
@@ -17,7 +18,9 @@ The detailed requirements and open questions are in
 
 To build, you need Go 1.27 or later and GNU Make.
 
-## Usage
+## Build
+
+Some of the usual make targets (`build`, `test` and `clean`) are available:
 
 ```bash
 make build      # build the binary to bin/dview
@@ -36,18 +39,21 @@ make test-browser BROWSER=firefox,chrome,safari
 
 Firefox and Chrome run headless. Safari has no headless mode, so it runs
 through Apple's `safaridriver` in a separate automation window that shows on
-screen while the test runs. Safari must be allowed to be automated, once:
+screen while the test runs. Safari must be allowed to be automated, which
+requires an administrator password. From a shell:
 
 ```bash
 safaridriver --enable
 ```
 
-That asks for an administrator password. Turning on **Develop > Allow Remote
-Automation** in Safari does the same.
+This can also be done within Safari by turning on **Develop > Allow Remote
+Automation**.
 
 The browser must be installed. If it isn't found on `PATH` or in the usual
 macOS location, set `DVIEW_FIREFOX_PATH`, `DVIEW_CHROME_PATH` or
 `DVIEW_SAFARIDRIVER_PATH` to it.
+
+## Usage
 
 ```bash
 ./bin/dview [--config <file>] [--debug] [--listen [<address>:]<port>] [--url <URL>] [--dir [<name>=]<path>]... [--show-config]
@@ -56,33 +62,37 @@ macOS location, set `DVIEW_FIREFOX_PATH`, `DVIEW_CHROME_PATH` or
 | Option | Default | Meaning |
 | ------ | ------- | ------- |
 | `--debug` | off | Log major internal actions to the console: option parsing, every request, directory listings, metadata reads, and messages and errors sent back from the browser page. |
-| `--listen [<address>:]<port>` | `localhost:8008` | Address and port to listen on. The address may be an IPv4 address, a bracketed IPv6 address such as `[::]`, or a hostname. A port alone keeps `localhost`. |
-| `--url <URL>` | last used | Address of a Forge-like back end, for the **Send** buttons, for example `http://127.0.0.1:7860/`. It can also be edited at the top of the page, which remembers the last 4. |
-| `--dir [<name>=]<path>` | none | Also allow files under `<path>`, shown as `/<name>`. Can be repeated. The working directory is always allowed. An unnamed `--dir /` allows the whole filesystem. |
-| `--config <file>` | searched for | Read settings from this config file. See below. |
-| `--show-config` | | Print the settings dview would use, as the contents of `dview.yaml`, and exit without starting. |
+| `--listen [<address>:]<port>` | `localhost:8008` | Address and port to listen on. The address may be an IPv4 address, a bracketed IPv6 address such as `[::]`, or a hostname. A port alone keeps `localhost`. Any explicit address (not `0.0.0.0` or `[::]`) must be configured on an interface.|
+| `--url <url>` | last used | Address of a Forge-like back end, for the **Send** buttons, for example `http://127.0.0.1:7860/`. It can also be edited at the top of the page, which remembers the last 4. |
+| `--dir [<name>=]<path>` | current directory | Specify one or more directories to make available in the UI.  The optional `name` is used as the top-level directory name if multiple `--dir` options are given. The working directory is always allowed. Caution: A `<path>` of  `/` allows the whole filesystem. |
+| `--config <file>` | (see below) | Read settings from this config file. See below. |
+| `--show-config` | | Print the settings dView would use on stdout then exit. This can be redirected to a file to generate a `dview.yaml` file. |
 
 Examples:
 
 ```bash
-./bin/dview --listen 9000
-./bin/dview --listen '[::]:8008' --dir /data/outputs --dir old=/archive/outputs
+./bin/dView --listen 9000
+./bin/dView --listen '[::]:8008' --dir /data/outputs --dir old=/archive/outputs
 ```
 
-### Config file and environment variables
+### Configuration File and Environment Variables
 
 The `--listen`, `--url`, `--dir` and `--debug` options can also be set in a
-config file or an environment variable. When the same setting comes from
-more than one place, the command line wins, then environment variables, then
-the config file.
+YAML configuration file or an environment variable. The settings precedence
+order is command line option, environment variable, configuration file and
+lastly built-in defaults.
 
-`--config <file>` (or the `DVIEW_CONFIG` environment variable) names the
-config file to read; `--config` wins if both are given, and the file must
-exist. Otherwise dview reads the first of these it finds, and none at all is
-fine:
+The YAML key names are the same as the option names, the environment variable
+names are `DVIEW_` followed by the option name in upper case
 
-1. `.dview.yaml` or `.dview.yml` in the directory dview is started in
-2. `dview.yaml` or `dview.yml` in `$XDG_CONFIG_HOME`, if that is set
+The configuration file to ready can be specified by the `--config <file>`
+option or the `DVIEW_CONFIG` environment variable (there is no `config` key
+in the configuration file itself). Without the `--config` option dView searches
+for a configuration file as follows, and reads the first one it finds:
+
+1. `.dview.yaml` or `.dview.yml` in the current directory
+2. `dview.yaml` or `dview.yml` in `$XDG_CONFIG_HOME`, if that environment
+   variable is set
 3. `dview.yaml` or `dview.yml` in `~/.config`
 
 Only that one file is read. Unknown settings in it are reported as errors,
@@ -97,41 +107,62 @@ dir:
 debug: false
 ```
 
-`dir` can also be a single path. `~` at the start of a path means your home
-directory, in the config file and environment variables too. Relative paths
-are relative to the directory dview is started in.
+This example represents the default values built in to the dView binary:
+
+```yaml
+listen: localhost:8008
+url: ""
+dir: []
+debug: false
+```
+
+Note that `dir` can be a single path or aYAML array. Also, a leading `~`
+in the path references the current user's home directory, similar to how
+UNIX shells often work.  Note that `~username` is not substituted as the
+named user's home directory.  Relative paths are relative to the current
+directory dView is started in.
 
 The environment variables are `DVIEW_LISTEN`, `DVIEW_URL`, `DVIEW_DIR` and
 `DVIEW_DEBUG` (`true` or `false`). `DVIEW_DIR` takes several directories
 separated by `:`, like `PATH`. An empty variable counts as not set.
 
 `--show-config` prints the combined result as YAML. It's a quick way to see
-what dview will use, or to start a config file. Which file the settings came
+what dView will use, or to start a config file. Which file the settings came
 from isn't a setting, so `--config` and `DVIEW_CONFIG` don't appear in it:
 
 ```bash
-./bin/dview --show-config > ~/.config/dview.yaml
+dview --listen 0.0.0.0:8080 --show-config > ~/.config/dview.yaml
 ```
 
-dview runs until you press Ctrl-C (or it gets SIGTERM).
+will produce the following in `~/.config/dview.yaml`:
+
+```yaml
+listen: 0.0.0.0:8080
+url: ""
+dir: []
+debug: false
+```
+
+dView runs until you press Ctrl-C (or it gets SIGTERM).
 
 Open `http://localhost:8008/` in a browser, use the **Open** button above
 either image to pick files, and the metadata of the two images is compared
 below them.
+
+Multiple image files may be selected in the **Open** dialog, the first two
+(as sorted alphanumerically) will be used if more than two are selected.
+Selecting only a single file will show that image underneath the **Open**
+button that was clicked.
 
 **Send** copies that image's generation parameters to the clipboard and
 brings up Forge (the URL at the top of the page). In Forge's txt2img tab,
 paste them into the Prompt box and click ↙ (Read generation parameters) to
 fill in all the settings.
 
-**Copy Image** puts that image on the clipboard, like a browser's right-click
+**Copy Image** copies that image to the clipboard, like a browser's right-click
 Copy Image, for pasting into Forge's img2img tab. JPEG and WebP images are
 copied as PNG. Copying needs the page to be opened on `localhost` or over
 https; otherwise use right-click Copy Image.
-
-_Current status: the first version of the UI works: choosing images with the
-built-in file dialog, showing them side by side, and the prompt and settings
-diff. Metadata is read from PNG, JPEG and WebP files._
 
 ## Project layout
 
@@ -148,13 +179,16 @@ diff. Metadata is read from PNG, JPEG and WebP files._
 | `*_test.go` | Tests (stretchr/testify) |
 | `internal/server/browser_test.go`, `internal/server/testdata/harness/` | Headless browser tests (`make test-browser`) |
 | `Makefile` | Build and test targets |
-| `go.mod` | Go module definition (`dview`) |
+| `go.mod` | Go module definition (`dView`) |
 
 ## Credits
 
-The code, tests and documentation in this project were written by
-Claude Opus 5.5 (model ID `claude-opus-5-5`), Anthropic's AI model,
-working in Claude Code (the desktop app's Code tab). The project's owner,
-Dean Troyer <dtroyer@gmail.com>, set the requirements, reviewed and
-tested each step, and decided what went in. The requirements were worked out together, a step at a time, in
-[REQUIREMENTS.md](REQUIREMENTS.md).
+dView was created from an interactive requirements session between
+Dean Troyer <dtroyer@gmail.com> and Claude Opus 5.5 (model ID `claude-opus-5-5`),
+the results of which are in [REQUIREMENTS.md](REQUIREMENTS.md). Claude write
+the original code and documentation.
+
+After rewriting some of the readme and requirements I plan to hand the README
+and REQUIREMENTS files to a new Claude session and see if it can produce a
+working implementation from scratch, and just how different it is.  That will
+eventually appear as another branch in this repo.
